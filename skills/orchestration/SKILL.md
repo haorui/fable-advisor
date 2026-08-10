@@ -90,6 +90,8 @@ Degradation policy is profile-specific, because only the codex lane has an exter
 - **Profile A.** `STATUS: unavailable | timeout | refused` → the review did not happen. Fix the cause and re-invoke if you can (auth, transient timeout, answering codex's clarifying question). If it genuinely cannot run, the architect may report the deliverable **done-but-unreviewed, saying exactly that and why** — loud degradation. Never silently skip the gate, never quietly swap `opus-reviewer` in for the Profile-A gate and call it the review, and never let a `refused` (no parseable verdict) pass as a completed review. Switching profiles to route around a broken CLI is a user decision, not the architect's.
 - **Profile B.** `opus-reviewer` has no external dependency, so unavailability is not an expected failure mode. The only non-verdict outcome is `STATUS: insufficient-brief` — the architect supplies what is missing (usually the stated goal) and re-invokes.
 
+A `ship` verdict is itself a claim, not evidence. Before reporting done on a ship, confirm the reviewer judged the actual change set — its findings, or the files it cites, must be consistent with the real diff. A ship rendered against an empty or wrong change set is void: fix the brief (usually the instructions for locating the changes) and re-invoke.
+
 Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings go back through the profile's implementation lane as corrected specs.
 
 ## Verification

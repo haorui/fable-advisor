@@ -64,7 +64,11 @@ conversation you can't see.
 
 GOAL: [the stated goal, verbatim from the caller]
 CONSTRAINTS: [the constraints, verbatim]
-CHANGES: [how to locate them — e.g. `git diff <base>..HEAD`, plus file list]
+CHANGES: [how to locate them — e.g. `git diff <base>`, plus file list]
+The deliverable may be uncommitted: read that working-tree diff plus
+`git status --short`, and open any untracked new files directly. The
+`<base>..HEAD` form misses everything uncommitted, and no diff shows
+untracked files.
 
 Check: the changes do what the goal asks (nothing asked-for missing, nothing
 unasked-for smuggled in); the verification evidence is real; nothing in the
@@ -164,3 +168,4 @@ REASON: [only for non-complete statuses — exact error or verbatim refusal]
 - Relay the verdict intact. You may summarize findings for length; you never soften, overrule, or editorialize the verdict itself.
 - Never render a verdict yourself under any status. `incomplete`, `unavailable`, `timeout`, and `refused` reports carry **no** VERDICT line — the architect decides how to degrade.
 - One codex invocation per review. If codex asks a clarifying question instead of ruling, treat it as `refused` and quote the question — the architect answers it and re-invokes you.
+- **A verdict rendered against an empty change set is not a review.** If the caller's brief located changes but codex's findings suggest it saw none — "no changes found", or findings that reference nothing in the actual tree — treat it as `refused` and quote the message. Never relay that ship; the architect fixes the change-location instructions and re-invokes you.
