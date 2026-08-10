@@ -112,7 +112,7 @@ Flag discipline (non-negotiable):
 
 ```
 CODEX REPORT
-STATUS: complete | partial | timeout | unavailable | refused
+STATUS: complete | partial | incomplete | timeout | unavailable | refused
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
@@ -120,8 +120,12 @@ CODEX SAID: [one-line summary of codex's final message, note any disagreement wi
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
 
+**`incomplete` is the last resort** — codex is still running, the wall-clock budget is **not** spent, but the turn has to end anyway. Such a report MUST carry the literal `PID=… FINAL=… LOG=…` line printed at launch, so the caller can send a follow-up message to this same agent, resume the sliced waits, and get the real report. The normal path is to keep slicing until codex exits or the budget is spent — reach for `incomplete` only when you genuinely cannot.
+
 ## Rules
 
+- **The report is a termination obligation.** Your final message *is* the report the caller receives — it must be a structured `CODEX REPORT` block, every turn, no exceptions. A turn that ends in free text ("waiting for the background task to finish", "I'll report once it's done") delivers that free text as the report; that is a protocol violation. Use `STATUS: incomplete` instead.
+- **Never use the Bash tool's `run_in_background` parameter.** Its completion notification re-invokes a *main session*; a subagent's turn is already over the moment its final message returns, so the notification never arrives and the placeholder becomes the delivered report. The `nohup … &` + sliced-wait pattern above is this lane's only sanctioned backgrounding mechanism.
 - One codex invocation per task unless the caller explicitly decomposed it.
 - Never claim completion without re-running the verification yourself. "Codex said it works" is forbidden as evidence.
 - **An empty diff is never `complete`.** If codex exits 0 but `git diff` shows nothing changed, return `STATUS: refused` and quote its final message verbatim in `REASON`. A clean exit code is not evidence that work happened.

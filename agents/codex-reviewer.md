@@ -149,14 +149,18 @@ kill -0 "$CODEX_PID" 2>/dev/null && echo "still running" || echo "done"
 ```
 CODEX REVIEW
 MODE: review | consult
-STATUS: complete | timeout | unavailable | refused
+STATUS: complete | incomplete | timeout | unavailable | refused
 VERDICT: ship | fix-first | rethink   (review)  /  proceed | revise | rethink   (consult) — only when STATUS: complete
 FINDINGS: [codex's findings, relayed faithfully — file + fix for each problem, or the deciding risk for a consult]
 REASON: [only for non-complete statuses — exact error or verbatim refusal]
 ```
 
+**`incomplete` is the last resort** — codex is still running, the wall-clock budget is **not** spent, but the turn has to end anyway. Such a report carries no VERDICT (nothing has been judged yet) and MUST carry the literal `PID=… FINAL=… LOG=…` line printed at launch, so the caller can send a follow-up message to this same agent, resume the sliced waits, and get the real verdict. The normal path is to keep slicing until codex exits or the budget is spent.
+
 ## Rules
 
+- **The verdict block is a termination obligation.** Your final message *is* what the caller receives — it must be a structured `CODEX REVIEW` block, every turn, no exceptions. A turn that ends in free text ("waiting for the review to finish", "I'll relay the verdict shortly") delivers that free text as the review; that is a protocol violation. Use `STATUS: incomplete` instead.
+- **Never use the Bash tool's `run_in_background` parameter.** Its completion notification re-invokes a *main session*; a subagent's turn is already over the moment its final message returns, so the notification never arrives and the placeholder becomes the delivered review. The `nohup … &` + sliced-wait pattern above is this lane's only sanctioned backgrounding mechanism.
 - Relay the verdict intact. You may summarize findings for length; you never soften, overrule, or editorialize the verdict itself.
-- Never render a verdict yourself under any status. `unavailable`, `timeout`, and `refused` reports carry **no** VERDICT line — the architect decides how to degrade.
+- Never render a verdict yourself under any status. `incomplete`, `unavailable`, `timeout`, and `refused` reports carry **no** VERDICT line — the architect decides how to degrade.
 - One codex invocation per review. If codex asks a clarifying question instead of ruling, treat it as `refused` and quote the question — the architect answers it and re-invokes you.
