@@ -1,6 +1,6 @@
 ---
 name: codex-implementer
-description: Cross-vendor implementation lane running GPT-5.6 Luna via the OpenAI Codex CLI (`codex exec`, reasoning effort max) — the optional race lane under lane Profile A, and the DEFAULT implementation lane under Profile B. Route work here when the architect wants an implementation from a non-Anthropic family — every implementation task under Profile B, and under Profile A the high-stakes specs worth racing against opus-implementer to pick the stronger diff. Receives the standard five-part spec; drives codex to write the code; returns a structured report with verification evidence. Requires the `codex` CLI installed and authenticated — reports a structured error if it is missing, never silently substitutes itself.
+description: Cross-vendor implementation lane running GPT-5.6 Luna via the OpenAI Codex CLI (`codex exec`, reasoning effort max) — the DEFAULT implementation lane under lane Profile A (the default profile), and the optional race lane under Profile B. Route work here when the architect wants an implementation from a non-Anthropic family — every implementation task under Profile A, and under Profile B the high-stakes specs worth racing against opus-implementer to pick the stronger diff. Receives the standard five-part spec; drives codex to write the code; returns a structured report with verification evidence. Requires the `codex` CLI installed and authenticated — reports a structured error if it is missing, never silently substitutes itself.
 model: sonnet
 tools: Bash, Read, Grep, Glob
 ---
