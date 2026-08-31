@@ -8,14 +8,14 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 
 | Agent | Producer | Role | Standing lane in |
 |---|---|---|---|
-| `codex-implementer` | **GPT-5.6 Luna** (max reasoning) | Implementation — drives codex to write the code from the architect's five-part spec | Profile A (default); the optional race lane under B |
+| `codex-implementer` | **GPT-5.6 Luna** (max reasoning) | Implementation — drives codex to write the code from the architect's six-part spec | Profile A (default); the optional race lane under B |
 | `opus-implementer` | **Claude Opus** (high effort) | Implementation — writes the code itself | Profile B; the optional race lane under A |
 | `opus-reviewer` | **Claude Opus** (high effort) | Reviewer + outside voice — consults at commitment boundaries (proceed / revise / rethink) and the mandatory end-of-deliverable review (ship / fix-first / rethink), judged natively — no CLI, no relay | Profile A (default) |
 | `codex-reviewer` | **GPT-5.6 Sol** (high reasoning) | Same two modes, same verdicts, relayed from codex | Profile B |
 
 The architect does not report done before the active profile's review gate returns a verdict. Tokens route by capability: Fable emits judgment and specs (volume-light, the priciest seat kept lean), the implementation lane emits the bulk of the code, and one producing seat always runs off-Anthropic. In the default profile the architect and reviewer are both Claude, so the implementation lane being a *different model family* is what keeps the system honest — every diff crosses a vendor line before it can ship, and same-family blind spots never get to write the code unchallenged. There is no separate escalation lane: when a task fails its spec twice in the implementation lane, the architect — the strongest implementer in the system — takes it over personally, and that diff still goes through the review.
 
-The plugin ships the **orchestration skill** — the routing doctrine, the cost discipline that keeps the Fable seat volume-light (emit judgment not volume, keep context lean, reason once then hand off), the five-part spec contract that makes context-free delegation safe, and the verification rules that keep every lane honest.
+The plugin ships the **orchestration skill** — the routing doctrine, the cost discipline that keeps the Fable seat volume-light (emit judgment not volume, keep context lean, reason once then hand off), the six-part spec contract that makes context-free delegation safe, and the verification rules that keep every lane honest.
 
 ## Lane profiles
 

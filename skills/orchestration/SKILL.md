@@ -25,7 +25,7 @@ Four agents, two roles each side of the vendor line:
 
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
-| `opus-implementer` | Claude Opus (high effort) | Implementation | Writes the code itself from the five-part spec. No external dependency. |
+| `opus-implementer` | Claude Opus (high effort) | Implementation | Writes the code itself from the six-part spec. No external dependency. |
 | `codex-implementer` | GPT-5.6 Luna (max reasoning) | Implementation | Drives codex to write the code. Requires the codex CLI. |
 | `codex-reviewer` | GPT-5.6 Sol (high reasoning) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). Relays codex's verdict; requires the codex CLI. |
 | `opus-reviewer` | Claude Opus (high effort) | Reviewer + outside voice | Same two modes and same verdict vocabularies, judged natively. No external dependency. |
@@ -65,15 +65,18 @@ Act on the verdict or surface the disagreement — never silently ignore it. A c
 
 ## The spec contract
 
-Implementers share none of your conversation context. Every delegation prompt carries all five parts:
+Implementers share none of your conversation context. Every delegation prompt carries all six parts:
 
 1. **Objective** — what to build or change, one paragraph
 2. **Files** — exact paths to create or modify
 3. **Interfaces** — signatures, types, or API shapes the code must match
 4. **Constraints** — project conventions, things not to touch
-5. **Verification** — the command(s) that prove it works
+5. **Acceptance** — the observable behaviors that define done, one line each in "given X → Y" form, written by the architect before any lane starts. Every item must be checkable from outside the implementation (a command, an HTTP call, a CLI invocation, a file on disk). This list is the standard the deliverable is measured against; it goes to the implementer and, verbatim, to the reviewer.
+6. **Verification** — the command(s) that prove the acceptance items hold
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to the lane.
+
+An acceptance list the architect can't write before implementation is the same signal — the outcome hasn't been decided, and handing that to the lane means the lane will define done for itself, which is exactly what the list exists to prevent. Keep the list at the level of behaviors, not test cases — the concrete inputs and expected outputs used to check each item are the architect's to hold back for the review (see the final-review section).
 
 ## Parallelism
 
@@ -84,6 +87,8 @@ For high-stakes work, race the two implementation lanes on the same spec and let
 ## The final review — mandatory
 
 **Always, once, at the end of a deliverable:** invoke the active profile's reviewer — `opus-reviewer` under Profile A, `codex-reviewer` under Profile B — with the stated goal, the constraints, and where to find the changes. It reads the accumulated diff with fresh eyes, judged against the goal rather than the conversation, and returns ship / fix-first / rethink. The architect does not report done before this review. **In both profiles, the architect never substitutes its own self-review for the gate** — the gate is an agent invocation with a returned verdict, or it did not happen.
+
+The review brief carries the spec's acceptance list verbatim, plus held-back cases — one to three concrete inputs with expected outputs, chosen by the architect and never shown to the implementer — that the reviewer runs before reading the diff. An implementer that has seen the exact checks can satisfy the checks without satisfying the behavior; cases it never saw measure the behavior. When the deliverable has no black-box surface (a pure internal refactor, say), the architect says so in the brief instead of inventing cases.
 
 Degradation policy is profile-specific, because only the codex-backed seat has an external dependency (CLI install, auth, model access) — and that seat is the implementation lane under Profile A, the review gate under Profile B:
 
@@ -96,4 +101,4 @@ Act on the verdict or surface the disagreement — never silently ignore it. `fi
 
 ## Verification
 
-Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment". `STATUS: incomplete` from either codex lane is neither a failure nor a done — codex is still running under budget: reply to that same agent telling it to resume waiting on the PID and FINAL/LOG paths its report carries.
+Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. The lane's ACCEPTANCE block must account for every acceptance item; an item marked unmet, or a report whose VERIFIED block quotes a command run without an ACCEPTANCE block mapping it to the items, means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment". `STATUS: incomplete` from either codex lane is neither a failure nor a done — codex is still running under budget: reply to that same agent telling it to resume waiting on the PID and FINAL/LOG paths its report carries.

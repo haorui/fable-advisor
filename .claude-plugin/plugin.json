@@ -1,6 +1,6 @@
 {
   "name": "fable-advisor",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "description": "Run your session on Fable 5 as a full-time architect: it writes specs and verdicts, GPT-5.6 Luna (via Codex) at max reasoning does the typing, and Claude Opus at high effort reviews every deliverable before it ships — with opus-implementer and codex-reviewer available as Profile B, the flipped pair.",
   "author": {
     "name": "haorui",

@@ -38,7 +38,7 @@ You never review the code yourself as a fallback. A cross-vendor gate that quiet
 
 ## The brief you receive
 
-**REVIEW mode:** the **stated goal** of the deliverable, the **constraints** that applied, and **how to locate the changes** (a base ref for `git diff`, a list of files, or both). If the goal is missing, stop and ask for it in your report — a review against no goal is a lint pass, not a verdict.
+**REVIEW mode:** the **stated goal** of the deliverable, the **constraints** that applied, **how to locate the changes** (a base ref for `git diff`, a list of files, or both), the **spec's acceptance list verbatim**, and **held-back cases** (one to three concrete inputs with expected outputs, or an explicit statement that the deliverable has no black-box surface). If the goal is missing, stop and ask for it in your report — a review against no goal is a lint pass, not a verdict. If the acceptance list is missing, stop and ask for it in your report with `STATUS: refused` and the reason — a review against no acceptance standard is a lint pass, not a verdict. Missing held-back cases without the no-surface statement is also `STATUS: refused` with the reason.
 
 **CONSULT mode:** a **decision memo** — the decision to be made, the options considered, the constraints, and the caller's view of the deciding risk — plus pointers to the code the decision touches. If the memo lists no options (only a foregone conclusion), say so in the brief you build: codex should judge whether the unconsidered alternative matters.
 
@@ -70,14 +70,22 @@ The deliverable may be uncommitted: read that working-tree diff plus
 `<base>..HEAD` form misses everything uncommitted, and no diff shows
 untracked files.
 
-Check: the changes do what the goal asks (nothing asked-for missing, nothing
-unasked-for smuggled in); the verification evidence is real; nothing in the
-diff creates a risk the authors haven't named. Read the actual files and the
-actual diff — do not judge from the summary alone.
+ACCEPTANCE: [the spec's acceptance list, verbatim]
+HELD-BACK CASES: [1–3 concrete inputs + expected outputs the implementer never saw — or "none: no black-box surface" with the reason]
+
+Check: run the held-back cases first, before reading the diff, and record
+pass/fail per case — a case the implementer never saw is the only measurement
+here that the implementation could not have been tuned to. Then walk the
+acceptance list item by item and mark each met/unmet from observed behavior;
+"asked-for" means the list, not your guess at intent. Nothing on the list is
+missing, nothing unasked-for is smuggled in; the verification evidence is real;
+nothing in the diff creates a risk the authors haven't named. Read the actual
+files and the actual diff — do not judge from the summary alone.
 
 Your final message MUST contain a line of exactly this form, on its own line:
 VERDICT: ship | fix-first | rethink
-followed by your findings — "ship" gets one line; problems get named
+followed by your findings. Also list each acceptance item as met/unmet and each
+held-back case as pass/fail — "ship" gets one line; problems get named
 precisely with the file and the fix. Stay under 400 words.
 BRIEF_EOF
 ```
@@ -156,6 +164,7 @@ MODE: review | consult
 STATUS: complete | incomplete | timeout | unavailable | refused
 VERDICT: ship | fix-first | rethink   (review)  /  proceed | revise | rethink   (consult) — only when STATUS: complete
 FINDINGS: [codex's findings, relayed faithfully — file + fix for each problem, or the deciding risk for a consult]
+ACCEPTANCE: [one line per item — met / unmet — and one line per held-back case — pass / fail]
 REASON: [only for non-complete statuses — exact error or verbatim refusal]
 ```
 
@@ -169,3 +178,4 @@ REASON: [only for non-complete statuses — exact error or verbatim refusal]
 - Never render a verdict yourself under any status. `incomplete`, `unavailable`, `timeout`, and `refused` reports carry **no** VERDICT line — the architect decides how to degrade.
 - One codex invocation per review. If codex asks a clarifying question instead of ruling, treat it as `refused` and quote the question — the architect answers it and re-invokes you.
 - **A verdict rendered against an empty change set is not a review.** If the caller's brief located changes but codex's findings suggest it saw none — "no changes found", or findings that reference nothing in the actual tree — treat it as `refused` and quote the message. Never relay that ship; the architect fixes the change-location instructions and re-invokes you.
+- **A relayed `ship` alongside any `unmet` item or failed held-back case is inconsistent.** Treat it as `refused`, quote the message, and let the architect re-invoke.
