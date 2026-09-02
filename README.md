@@ -35,7 +35,9 @@ Two ways to switch, both manual:
 fable-advisor lane profile: B
 ```
 
-Absent both, you get Profile A. An in-session switch overrides the `CLAUDE.md` line for that session. **The architect never switches profiles on its own** — not to route around a failing lane, not to save cost. Flipping vendors is your call, not a recovery strategy.
+Absent both, you get Profile A. An in-session switch overrides the `CLAUDE.md` line for that session, and a project's line overrides your user-level one. **The architect never switches profiles on its own** — not to route around a failing lane, not to save cost. Flipping vendors is your call, not a recovery strategy.
+
+**Turning it off.** `fable-advisor lane profile: off` in a `CLAUDE.md` — or an in-session "solo mode" / "不用车道" — switches the architect pattern off for that scope: your session does the work itself, with no lane delegation and no mandatory consult or review gate, and the four agents run only when you ask for one by name, which does not turn the pattern back on. Your session says so once at its first implementation step ("architect mode off: implementing directly"). "use profile A" or "use profile B" turns it back on. In-session beats the `CLAUDE.md` line; a project's line beats your user-level one.
 
 ## Install
 
