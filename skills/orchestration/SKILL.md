@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, escalates judgment-heavy one-offs to `sol-implementer`, optionally races the standing lane against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, choosing between codex-implementer/sol-implementer lanes, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), writing a spec for a subagent, deciding whether to consult or invoke a reviewer, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
+description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, escalates judgment-heavy one-offs to `sol-implementer`, optionally races the standing lane against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, choosing between codex-implementer/sol-implementer lanes, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), choosing a reasoning effort for sol-implementer, writing a spec for a subagent, deciding whether to consult or invoke a reviewer, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
 ---
 
 # Orchestration — the architect's routing doctrine
@@ -26,7 +26,7 @@ Four agents, with the cross-vendor check on the implementation side:
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
 | `codex-implementer` | GPT-5.6 Luna (max reasoning) | Standing implementation lane | Drives codex to write the code. Requires the codex CLI. |
-| `sol-implementer` | GPT-5.6 Sol (max reasoning) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
+| `sol-implementer` | GPT-5.6 Sol (effort per task, up to `ultra`) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
 | `opus-reviewer` | Claude Opus (high effort) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). Judged natively. No external dependency. |
 | `opus-implementer` | Claude Opus (high effort) | Optional race lane | Writes the code itself from the six-part spec for high-stakes races. No external dependency. |
 
@@ -64,7 +64,7 @@ Act on the verdict or surface the disagreement — never silently ignore it. A c
 
 ## The spec contract
 
-Implementers share none of your conversation context. Every delegation prompt carries all six parts:
+Implementers share none of your conversation context. Every delegation prompt carries the contract below:
 
 1. **Objective** — what to build or change, one paragraph
 2. **Files** — exact paths to create or modify
@@ -72,6 +72,21 @@ Implementers share none of your conversation context. Every delegation prompt ca
 4. **Constraints** — project conventions, things not to touch
 5. **Acceptance** — the observable behaviors that define done, one line each in "given X → Y" form, written by the architect before any lane starts. Every item must be checkable from outside the implementation (a command, an HTTP call, a CLI invocation, a file on disk). This list is the standard the deliverable is measured against; it goes to the implementer and, verbatim, to the reviewer.
 6. **Verification** — the command(s) that prove the acceptance items hold
+7. **Reasoning** — `sol-implementer` only: one line, `REASONING: <effort>`, chosen from the rungs below. The other lanes pin their own effort and ignore this line.
+
+For `sol-implementer`, choose a reasoning effort from this Sol-specific table; Luna stays pinned at max in `codex-implementer`.
+
+| Sol rung | Use for |
+|---|---|
+| `low` / `medium` | Mechanical edits, renames, wiring, boilerplate, config, or tests mirroring an existing pattern — but such work should not be routed to this escalation lane at all. |
+| `high` | Ordinary features with a couple of design decisions left to the lane. |
+| `xhigh` | Tricky logic, multi-file changes with interactions, or the corrected-spec second attempt. |
+| `max` | Concurrency, security-sensitive paths, or gnarly debugging. |
+| `ultra` | Maximum reasoning plus codex's own internal task delegation — slow; reserve it for wide-blast-radius refactors and problems that have resisted two attempts. |
+
+Pick the lowest rung that is adequate; effort is cost and wall-clock, not a quality dial to leave at max.
+
+The `REASONING` line is required on every `sol-implementer` spec — this lane runs only escalations. If it is omitted the lane runs at the user's configured default and flags that in `GAPS`; treat that flag as a spec defect to correct, not a valid state.
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to the lane.
 
