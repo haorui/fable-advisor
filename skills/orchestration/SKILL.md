@@ -1,11 +1,11 @@
 ---
 name: orchestration
-description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, optionally races it against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), writing a spec for a subagent, deciding whether to consult or invoke a reviewer, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
+description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, escalates judgment-heavy one-offs to `sol-implementer`, optionally races the standing lane against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, choosing between codex-implementer/sol-implementer lanes, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), writing a spec for a subagent, deciding whether to consult or invoke a reviewer, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
 ---
 
 # Orchestration — the architect's routing doctrine
 
-The session is the architect, running on Fable — the most capable model available. It owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. Every implementation task gets delegated to `codex-implementer`, and every finished deliverable gets a review from `opus-reviewer` before the architect reports done.
+The session is the architect, running on Fable — the most capable model available. It owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. Every implementation task gets delegated to the implementation lane the architect routes it to — `codex-implementer` by default, `sol-implementer` for judgment-heavy one-offs — and every finished deliverable gets a review from `opus-reviewer` before the architect reports done.
 
 ## Cost discipline — the prime directive
 
@@ -21,13 +21,16 @@ What stays with the architect regardless of cost: decomposition, interface desig
 
 ## The lanes
 
-Three agents, with the cross-vendor check on the implementation side:
+Four agents, with the cross-vendor check on the implementation side:
 
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
 | `codex-implementer` | GPT-5.6 Luna (max reasoning) | Standing implementation lane | Drives codex to write the code. Requires the codex CLI. |
+| `sol-implementer` | GPT-5.6 Sol (max reasoning) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
 | `opus-reviewer` | Claude Opus (high effort) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). Judged natively. No external dependency. |
 | `opus-implementer` | Claude Opus (high effort) | Optional race lane | Writes the code itself from the six-part spec for high-stakes races. No external dependency. |
+
+How much does the outcome depend on judgment the spec can't capture? Little → `codex-implementer`; a lot, and mistakes are costly → `sol-implementer`, or keep that piece with the architect.
 
 ## Turning the pattern off
 
@@ -40,9 +43,9 @@ Set the pattern off in either of two ways:
 fable-advisor lane profile: off
 ```
 
-`off` is the only value that line recognises. While it is active, nothing in this skill applies: the session reads, implements, and verifies directly, with no lane delegation, no mandatory consult, and no mandatory review gate. The three lane agents run only when the user explicitly asks for one, and running one does not turn the pattern back on. The session announces it once, at the first implementation step ("architect mode off: implementing directly"). In-session beats the `CLAUDE.md` line, and a project's line beats the user's. To turn the pattern back on in-session, say "architect mode on", "use lanes", or "开启 architect 模式".
+`off` is the only value that line recognises. While it is active, nothing in this skill applies: the session reads, implements, and verifies directly, with no lane delegation, no mandatory consult, and no mandatory review gate. The four lane agents run only when the user explicitly asks for one, and running one does not turn the pattern back on. The session announces it once, at the first implementation step ("architect mode off: implementing directly"). In-session beats the `CLAUDE.md` line, and a project's line beats the user's. To turn the pattern back on in-session, say "architect mode on", "use lanes", or "开启 architect 模式".
 
-**The two-failures takeover.** A task that fails its spec once in the implementation lane gets a corrected spec; twice, the architect implements it personally — the sole exception to "never type code". Repetition is evidence the task needs judgment the spec can't carry, and the architect *is* the strongest implementer in the system. The takeover is announced explicitly ("taking this over after two lane failures"), kept to the failing piece, and the resulting diff still goes through the review gate like everyone else's. **What counts as a failure is narrow**: a structured report whose evidence shows the spec unmet. An empty, placeholder, or free-text report is *not* failure evidence — before counting any failure, check the working tree yourself (`git status`, read the diff, re-run the verification command). If the work actually landed, the response is a follow-up message to the *same* lane agent demanding its structured report — naming any unreported scope you found in the diff — not a failure tally and not a redo.
+**The two-failures takeover.** A task that fails its spec once — in whichever lane it was routed to — gets a corrected spec, and the architect may re-route that corrected spec to `sol-implementer` when the first failure looks like misclassification. A second failure of the same task, in any lane, triggers the takeover: the architect implements it personally — the sole exception to "never type code". The budget is two attempts per task, not two per lane; a race is one attempt however many lanes ran it. The takeover is announced explicitly ("taking this over after two lane failures"), kept to the failing piece, and the resulting diff still goes through the review gate like everyone else's. **What counts as a failure is narrow**: a structured report whose evidence shows the spec unmet. An empty, placeholder, or free-text report is *not* failure evidence — before counting any failure, check the working tree yourself (`git status`, read the diff, re-run the verification command). If the work actually landed, the response is a follow-up message to the *same* lane agent demanding its structured report — naming any unreported scope you found in the diff — not a failure tally and not a redo.
 
 ## Commitment boundaries — the outside voice
 
@@ -78,7 +81,7 @@ An acceptance list the architect can't write before implementation is the same s
 
 Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial.
 
-For high-stakes work, race the two implementation lanes on the same spec and let the architect pick the stronger diff — two model families, one judged result. The race is `codex-implementer` (standing) vs `opus-implementer` (optional); both diffs go to `opus-reviewer` as one deliverable, not two.
+For high-stakes work, race the two implementation lanes on the same spec and let the architect pick the stronger diff — two model families, one judged result. The race is the lane the task was routed to (`codex-implementer`, or `sol-implementer` for an escalation) vs `opus-implementer`; both diffs go to `opus-reviewer` as one deliverable, not two.
 
 ## The final review — mandatory
 
@@ -90,18 +93,18 @@ The review brief carries the spec's acceptance list verbatim, plus held-back cas
 
 A `ship` verdict is itself a claim, not evidence. Before reporting done on a ship, confirm the reviewer judged the actual change set — its findings, or the files it cites, must be consistent with the real diff. A ship rendered against an empty or wrong change set is void: fix the brief (usually the instructions for locating the changes) and re-invoke.
 
-Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings go back through `codex-implementer` as corrected specs.
+Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings go back through the lane that produced the change as corrected specs.
 
 ## The Codex plugin (optional)
 
 If the official OpenAI Codex plugin for Claude Code is installed (`codex@openai-codex` under `enabledPlugins` in the user's Claude Code settings; `/plugin list` shows it), its commands become available in the session. It talks to the local `codex` binary over its app-server protocol, so it shares the same install and login as the lanes. The doctrine uses it three ways:
 
 - **`/codex:adversarial-review`** — run it on the accumulated diff *before* the `opus-reviewer` final review gate on any deliverable that touched a security-sensitive path, a migration, or an API shape. Pass its findings to `opus-reviewer` in the review brief, labelled as unverified third-party claims that the reviewer re-checks itself — they are input to its own read of the diff, not a substitute for it. `/codex:review` is the lighter pass for ordinary deliverables when the user wants cross-vendor review. Since this fork's reviewer (`opus-reviewer`) is a Claude model, the Codex plugin's adversarial review is the only non-Anthropic check available on the review side of the pipeline — which is why it is recommended, not required, specifically on those deliverables.
-- **`/codex:rescue --model <slug> --effort <rung>`** — a write-capable delegation the user can drive directly, with `/codex:status`, `/codex:result`, and `/codex:cancel` for background jobs. Use it when the user asks for it, or for a long-running investigation you want off the session's critical path. Its output is not a lane report, so the architect still reads the diff and re-runs verification itself. Whenever you want the structured report and the empty-diff check, use the `codex-implementer` or `opus-implementer` lanes.
+- **`/codex:rescue --model <slug> --effort <rung>`** — a write-capable delegation the user can drive directly, with `/codex:status`, `/codex:result`, and `/codex:cancel` for background jobs. Use it when the user asks for it, or for a long-running investigation you want off the session's critical path. Its output is not a lane report, so the architect still reads the diff and re-runs verification itself. Whenever you want the structured report and the empty-diff check, use the codex lanes or `opus-implementer`.
 - **`/codex:setup`** — point the user here when a lane reports `unavailable`; it diagnoses the codex binary, version, and login.
 
 The plugin's optional stop-time review gate (`/codex:setup --enable-review-gate`) runs a Codex review every time the session stops; it overlaps with the mandatory `opus-reviewer` end-of-deliverable gate and can loop, so leave it off under this pattern unless the user chooses otherwise. Without the plugin the pattern is unchanged — it adds a reviewer and a manual delegation path, it is not a dependency.
 
 ## Verification
 
-Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. The lane's ACCEPTANCE block must account for every acceptance item; an item marked unmet, or a report whose VERIFIED block quotes a command run without an ACCEPTANCE block mapping it to the items, means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment". `STATUS: incomplete` from `codex-implementer` is neither a failure nor a done — codex is still running under budget: reply to that same agent telling it to resume waiting on the PID and FINAL/LOG paths its report carries.
+Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. The lane's ACCEPTANCE block must account for every acceptance item; an item marked unmet, or a report whose VERIFIED block quotes a command run without an ACCEPTANCE block mapping it to the items, means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment". `STATUS: incomplete` from either codex lane is neither a failure nor a done — codex is still running under budget: reply to that same agent telling it to resume waiting on the PID and FINAL/LOG paths its report carries.

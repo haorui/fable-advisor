@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
   "metadata": {
-    "description": "Model-routing patterns for Claude Code: Fable 5 architect-as-orchestrator with a GPT-5.6 Luna cross-vendor implementation lane, an optional Claude Opus implementation lane, and a native Claude Opus end-of-deliverable reviewer."
+    "description": "Model-routing patterns for Claude Code: Fable 5 architect-as-orchestrator with a GPT-5.6 Luna cross-vendor implementation lane, GPT-5.6 Sol taking the high-complexity one-offs, an optional Claude Opus implementation lane, and a native Claude Opus end-of-deliverable reviewer."
   },
   "owner": {
     "name": "haorui",
@@ -11,7 +11,7 @@
     {
       "name": "fable-advisor",
       "source": "./",
-      "description": "Fable architect-as-orchestrator: your session writes specs and verdicts, GPT-5.6 Luna (via Codex, max reasoning) does the typing, with an optional Claude Opus implementation race — and a mandatory Claude Opus review before anything ships."
+      "description": "Fable architect-as-orchestrator: your session writes specs and verdicts, GPT-5.6 Luna (via Codex, max reasoning) does the typing, GPT-5.6 Sol takes the high-complexity one-offs, with an optional Claude Opus implementation race — and a mandatory Claude Opus review before anything ships."
     }
   ]
 }
