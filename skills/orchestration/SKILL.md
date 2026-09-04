@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, optionally races it against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), writing a spec for a subagent, deciding whether to consult or invoke a reviewer, managing session cost or token spend, or running any multi-task build where the session is the architect.'
+description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, optionally races it against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), writing a spec for a subagent, deciding whether to consult or invoke a reviewer, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
 ---
 
 # Orchestration — the architect's routing doctrine
@@ -91,6 +91,16 @@ The review brief carries the spec's acceptance list verbatim, plus held-back cas
 A `ship` verdict is itself a claim, not evidence. Before reporting done on a ship, confirm the reviewer judged the actual change set — its findings, or the files it cites, must be consistent with the real diff. A ship rendered against an empty or wrong change set is void: fix the brief (usually the instructions for locating the changes) and re-invoke.
 
 Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings go back through `codex-implementer` as corrected specs.
+
+## The Codex plugin (optional)
+
+If the official OpenAI Codex plugin for Claude Code is installed (`codex@openai-codex` under `enabledPlugins` in the user's Claude Code settings; `/plugin list` shows it), its commands become available in the session. It talks to the local `codex` binary over its app-server protocol, so it shares the same install and login as the lanes. The doctrine uses it three ways:
+
+- **`/codex:adversarial-review`** — run it on the accumulated diff *before* the `opus-reviewer` final review gate on any deliverable that touched a security-sensitive path, a migration, or an API shape. Pass its findings to `opus-reviewer` in the review brief, labelled as unverified third-party claims that the reviewer re-checks itself — they are input to its own read of the diff, not a substitute for it. `/codex:review` is the lighter pass for ordinary deliverables when the user wants cross-vendor review. Since this fork's reviewer (`opus-reviewer`) is a Claude model, the Codex plugin's adversarial review is the only non-Anthropic check available on the review side of the pipeline — which is why it is recommended, not required, specifically on those deliverables.
+- **`/codex:rescue --model <slug> --effort <rung>`** — a write-capable delegation the user can drive directly, with `/codex:status`, `/codex:result`, and `/codex:cancel` for background jobs. Use it when the user asks for it, or for a long-running investigation you want off the session's critical path. Its output is not a lane report, so the architect still reads the diff and re-runs verification itself. Whenever you want the structured report and the empty-diff check, use the `codex-implementer` or `opus-implementer` lanes.
+- **`/codex:setup`** — point the user here when a lane reports `unavailable`; it diagnoses the codex binary, version, and login.
+
+The plugin's optional stop-time review gate (`/codex:setup --enable-review-gate`) runs a Codex review every time the session stops; it overlaps with the mandatory `opus-reviewer` end-of-deliverable gate and can loop, so leave it off under this pattern unless the user chooses otherwise. Without the plugin the pattern is unchanged — it adds a reviewer and a manual delegation path, it is not a dependency.
 
 ## Verification
 

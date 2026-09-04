@@ -46,9 +46,12 @@ Then start your session as the architect:
 
 - **Claude Code ≥ 2.1.170** with a subscription that includes Fable 5 (Pro, Max, Team, or Enterprise — all current consumer plans qualify), since the session itself runs on Fable.
 - **Codex lane:** the [OpenAI Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`, then `codex login`) — required for the standing implementation lane (`codex-implementer`, **GPT-5.6 Luna** as `gpt-5.6-luna` with `model_reasoning_effort=max`). A high-stakes race also needs the CLI because it includes that lane. Without an installed, authenticated CLI or model access, the codex agent reports `STATUS: unavailable` — it never silently falls back to a Claude model. That stops the work at the implementation lane.
+- **Optional Codex plugin:** the [Codex plugin for Claude Code](https://github.com/openai/codex-plugin-cc) (`/plugin marketplace add openai/codex-plugin-cc`, then `/plugin install codex@openai-codex`). When enabled, the orchestration skill uses `/codex:adversarial-review` as a cross-vendor pre-check before the `opus-reviewer` gate on sensitive deliverables (security-sensitive paths, migrations, API shapes), with `/codex:rescue` available for manual user-driven delegation.
 - Heads-up: if a pinned Claude model isn't available on your account, Claude Code silently falls back to your session model. If `model: opus` in `opus-reviewer` quietly becomes Fable, the review gate becomes the architect's own model judging its own deliverable — the self-review the doctrine forbids, arriving as a clean verdict with nothing to signal it. In `opus-implementer`, the same fallback makes the optional race lane *more* expensive than intended; if costs feel off, check your plan. (This quiet fallback applies only to Claude model pins — the codex lane always fails loudly with a structured error.)
 
 Model resolution order in Claude Code: `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` parameter → agent frontmatter → session model.
+Effort resolution: `CLAUDE_CODE_EFFORT_LEVEL` env var → agent frontmatter `effort` → session `/effort`.
+The Claude agents (`opus-implementer` and `opus-reviewer`) set `effort: high` in their frontmatter; `codex-implementer` has no frontmatter effort field and pins GPT-5.6 Luna to max in its Codex CLI invocation.
 
 ## Use it
 

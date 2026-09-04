@@ -22,8 +22,11 @@ The prompt you receive should contain the standard six-part spec: **objective, f
 
 ## What you return
 
+When two lanes race on one spec, this line lets the architect distinguish their diffs by report.
+
 ```
 OPUS REPORT
+LANE: opus-implementer (claude-opus, effort: high)
 STATUS: complete | partial | blocked
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]

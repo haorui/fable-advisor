@@ -111,8 +111,11 @@ Flag discipline (non-negotiable):
 
 ## What you return
 
+When two lanes race on one spec, this line lets the architect distinguish their diffs by report.
+
 ```
 CODEX REPORT
+LANE: codex-implementer (gpt-5.6-luna, effort: max)
 STATUS: complete | partial | incomplete | timeout | unavailable | refused
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
