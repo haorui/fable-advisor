@@ -1,11 +1,11 @@
 ---
 name: orchestration
-description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, escalates judgment-heavy one-offs to `sol-implementer`, optionally races the standing lane against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, choosing between codex-implementer/sol-implementer lanes, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), choosing a reasoning effort for sol-implementer, writing a spec for a subagent, deciding whether to consult or invoke a reviewer, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
+description: 'Routing doctrine for the architect-as-orchestrator pattern — how a Fable session delegates implementation to `codex-implementer`, escalates judgment-heavy one-offs to `astra-implementer`, optionally races the standing lane against `opus-implementer`, consults `opus-reviewer` as the outside voice at commitment boundaries, and gets every deliverable reviewed by `opus-reviewer` before reporting done. USE WHEN delegating implementation work, choosing between codex-implementer/astra-implementer lanes, routing between the standing and optional race lanes, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), choosing a reasoning effort for astra-implementer, writing a spec for a subagent, deciding whether to consult or invoke a reviewer, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
 ---
 
 # Orchestration — the architect's routing doctrine
 
-The session is the architect, running on Fable — the most capable model available. It owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. Every implementation task gets delegated to the implementation lane the architect routes it to — `codex-implementer` by default, `sol-implementer` for judgment-heavy one-offs — and every finished deliverable gets a review from `opus-reviewer` before the architect reports done.
+The session is the architect, running on Fable — the most capable model available. It owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. Every implementation task gets delegated to the implementation lane the architect routes it to — `codex-implementer` by default, `astra-implementer` for judgment-heavy one-offs — and every finished deliverable gets a review from `opus-reviewer` before the architect reports done.
 
 ## Cost discipline — the prime directive
 
@@ -26,11 +26,11 @@ Four agents, with the cross-vendor check on the implementation side:
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
 | `codex-implementer` | GPT-5.6 Luna (max reasoning) | Standing implementation lane | Drives codex to write the code. Requires the codex CLI. |
-| `sol-implementer` | GPT-5.6 Sol (effort per task, up to `ultra`) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
+| `astra-implementer` | GPT-6 Astra (effort per task, up to `ultra`) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
 | `opus-reviewer` | Claude Opus (high effort) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). Judged natively. No external dependency. |
 | `opus-implementer` | Claude Opus (high effort) | Optional race lane | Writes the code itself from the six-part spec for high-stakes races. No external dependency. |
 
-How much does the outcome depend on judgment the spec can't capture? Little → `codex-implementer`; a lot, and mistakes are costly → `sol-implementer`, or keep that piece with the architect.
+How much does the outcome depend on judgment the spec can't capture? Little → `codex-implementer`; a lot, and mistakes are costly → `astra-implementer`, or keep that piece with the architect.
 
 ## Turning the pattern off
 
@@ -45,7 +45,7 @@ fable-advisor lane profile: off
 
 `off` is the only value that line recognises. While it is active, nothing in this skill applies: the session reads, implements, and verifies directly, with no lane delegation, no mandatory consult, and no mandatory review gate. The four lane agents run only when the user explicitly asks for one, and running one does not turn the pattern back on. The session announces it once, at the first implementation step ("architect mode off: implementing directly"). In-session beats the `CLAUDE.md` line, and a project's line beats the user's. To turn the pattern back on in-session, say "architect mode on", "use lanes", or "开启 architect 模式".
 
-**The two-failures takeover.** A task that fails its spec once — in whichever lane it was routed to — gets a corrected spec, and the architect may re-route that corrected spec to `sol-implementer` when the first failure looks like misclassification. A second failure of the same task, in any lane, triggers the takeover: the architect implements it personally — the sole exception to "never type code". The budget is two attempts per task, not two per lane; a race is one attempt however many lanes ran it. The takeover is announced explicitly ("taking this over after two lane failures"), kept to the failing piece, and the resulting diff still goes through the review gate like everyone else's. **What counts as a failure is narrow**: a structured report whose evidence shows the spec unmet. An empty, placeholder, or free-text report is *not* failure evidence — before counting any failure, check the working tree yourself (`git status`, read the diff, re-run the verification command). If the work actually landed, the response is a follow-up message to the *same* lane agent demanding its structured report — naming any unreported scope you found in the diff — not a failure tally and not a redo.
+**The two-failures takeover.** A task that fails its spec once — in whichever lane it was routed to — gets a corrected spec, and the architect may re-route that corrected spec to `astra-implementer` when the first failure looks like misclassification. A second failure of the same task, in any lane, triggers the takeover: the architect implements it personally — the sole exception to "never type code". The budget is two attempts per task, not two per lane; a race is one attempt however many lanes ran it. The takeover is announced explicitly ("taking this over after two lane failures"), kept to the failing piece, and the resulting diff still goes through the review gate like everyone else's. **What counts as a failure is narrow**: a structured report whose evidence shows the spec unmet. An empty, placeholder, or free-text report is *not* failure evidence — before counting any failure, check the working tree yourself (`git status`, read the diff, re-run the verification command). If the work actually landed, the response is a follow-up message to the *same* lane agent demanding its structured report — naming any unreported scope you found in the diff — not a failure tally and not a redo.
 
 ## Commitment boundaries — the outside voice
 
@@ -72,11 +72,11 @@ Implementers share none of your conversation context. Every delegation prompt ca
 4. **Constraints** — project conventions, things not to touch
 5. **Acceptance** — the observable behaviors that define done, one line each in "given X → Y" form, written by the architect before any lane starts. Every item must be checkable from outside the implementation (a command, an HTTP call, a CLI invocation, a file on disk). This list is the standard the deliverable is measured against; it goes to the implementer and, verbatim, to the reviewer.
 6. **Verification** — the command(s) that prove the acceptance items hold
-7. **Reasoning** — `sol-implementer` only: one line, `REASONING: <effort>`, chosen from the rungs below. The other lanes pin their own effort and ignore this line.
+7. **Reasoning** — `astra-implementer` only: one line, `REASONING: <effort>`, chosen from the rungs below. The other lanes pin their own effort and ignore this line.
 
-For `sol-implementer`, choose a reasoning effort from this Sol-specific table; Luna stays pinned at max in `codex-implementer`.
+For `astra-implementer`, choose a reasoning effort from this Astra-specific table; Luna stays pinned at max in `codex-implementer`.
 
-| Sol rung | Use for |
+| Astra rung | Use for |
 |---|---|
 | `low` / `medium` | Mechanical edits, renames, wiring, boilerplate, config, or tests mirroring an existing pattern — but such work should not be routed to this escalation lane at all. |
 | `high` | Ordinary features with a couple of design decisions left to the lane. |
@@ -86,7 +86,7 @@ For `sol-implementer`, choose a reasoning effort from this Sol-specific table; L
 
 Pick the lowest rung that is adequate; effort is cost and wall-clock, not a quality dial to leave at max.
 
-The `REASONING` line is required on every `sol-implementer` spec — this lane runs only escalations. If it is omitted the lane runs at the user's configured default and flags that in `GAPS`; treat that flag as a spec defect to correct, not a valid state.
+The `REASONING` line is required on every `astra-implementer` spec — this lane runs only escalations. If it is omitted the lane runs at the user's configured default and flags that in `GAPS`; treat that flag as a spec defect to correct, not a valid state.
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to the lane.
 
@@ -96,7 +96,7 @@ An acceptance list the architect can't write before implementation is the same s
 
 Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial.
 
-For high-stakes work, race the two implementation lanes on the same spec and let the architect pick the stronger diff — two model families, one judged result. The race is the lane the task was routed to (`codex-implementer`, or `sol-implementer` for an escalation) vs `opus-implementer`; both diffs go to `opus-reviewer` as one deliverable, not two.
+For high-stakes work, race the two implementation lanes on the same spec and let the architect pick the stronger diff — two model families, one judged result. The race is the lane the task was routed to (`codex-implementer`, or `astra-implementer` for an escalation) vs `opus-implementer`; both diffs go to `opus-reviewer` as one deliverable, not two.
 
 ## The final review — mandatory
 
