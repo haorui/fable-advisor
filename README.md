@@ -9,7 +9,7 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 | Agent | Producer | Role | Lane |
 |---|---|---|---|
 | `codex-implementer` | **GPT-5.6 Luna** (max reasoning) | Implementation — drives codex to write the code from the architect's six-part spec | Standing implementation lane |
-| `astra-implementer` | **GPT-6 Astra** (effort named per task, up to `ultra`) | Implementation — high-complexity one-offs where judgment the spec can't capture decides the outcome | Escalation lane, never the default |
+| `astra-implementer` | **GPT-6 Astra** (effort named per task, up to `max`) | Implementation — high-complexity one-offs where judgment the spec can't capture decides the outcome | Escalation lane, never the default |
 | `opus-implementer` | **Claude Opus** (high effort) | Implementation — writes the code itself | Optional race lane for high-stakes specs |
 | `opus-reviewer` | **Claude Opus** (high effort) | Reviewer + outside voice — consults at commitment boundaries (proceed / revise / rethink) and the mandatory end-of-deliverable review (ship / fix-first / rethink), judged natively — no CLI, no relay | Standing reviewer + outside voice |
 
@@ -95,7 +95,7 @@ Every deliverable ends at `opus-reviewer`, the review gate. Claude Opus reads th
 
 **What happened to fable-implementer and fable-advisor?** Both collapsed into the architect. The session *is* Fable now, so a Fable escalation lane and a Fable advisor would be the same model reviewing itself at extra hand-off cost. Hard tasks that defeat the implementation lane twice go to the architect directly; fresh-eyes review goes to `opus-reviewer`.
 
-**Upstream versions?** This fork's lineage: upstream v4 (Opus architect, Codex routine lane, Fable escalation + review) → v5 (Fable architect, Codex implementation lane, native Opus review, keeping v4's producing pair with the architect seat upgraded) → v6 (one fixed arrangement — codex implements, opus reviews; profiles removed) → v6.1 (adds `sol-implementer`, a GPT-5.6 Sol escalation lane for judgment-heavy one-offs) → this v6.2 (swaps the escalation lane to `astra-implementer`, GPT-6 Astra, same six effort rungs). For the original pattern, use [DannyMac180/fable-advisor](https://github.com/DannyMac180/fable-advisor).
+**Upstream versions?** This fork's lineage: upstream v4 (Opus architect, Codex routine lane, Fable escalation + review) → v5 (Fable architect, Codex implementation lane, native Opus review, keeping v4's producing pair with the architect seat upgraded) → v6 (one fixed arrangement — codex implements, opus reviews; profiles removed) → v6.1 (adds `sol-implementer`, a GPT-5.6 Sol escalation lane for judgment-heavy one-offs) → this v6.2 (swaps the escalation lane to `astra-implementer`, GPT-6 Astra). For the original pattern, use [DannyMac180/fable-advisor](https://github.com/DannyMac180/fable-advisor).
 
 ## License
 
