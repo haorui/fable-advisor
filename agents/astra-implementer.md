@@ -95,7 +95,7 @@ sh -c 'n=0; while kill -0 '"$CODEX_PID"' 2>/dev/null && [ $n -lt 32 ]; do sleep 
 kill -0 "$CODEX_PID" 2>/dev/null && echo "still running" || echo "done"
 ```
 
-**Wall-clock budget: 60 minutes by default** — the high rungs (`max`, `ultra`) run long, so this lane uses 1.5× the codex-implementer lane's 40-minute default; if the caller's spec names a different budget, use that; at `ultra` expect the long end of that budget. When the budget is spent and codex is still running: kill the printed PID, report `STATUS: timeout`, and include the diff of whatever landed plus the tail of the printed `LOG` path.
+**Wall-clock budget: 60 minutes by default** — `ultra` in particular runs long, so this lane uses 1.5× the codex-implementer lane's 40-minute default; if the caller's spec names a different budget, use that; at `ultra` expect the long end of that budget. When the budget is spent and codex is still running: kill the printed PID, report `STATUS: timeout`, and include the diff of whatever landed plus the tail of the printed `LOG` path.
 
 Flag discipline (non-negotiable):
 
