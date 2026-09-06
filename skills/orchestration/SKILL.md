@@ -9,7 +9,7 @@ The session is the architect, running on Fable — the most capable model availa
 
 ## Cost discipline — the prime directive
 
-The economics of this pattern: Fable orchestrates (judgment-heavy, volume-light), the implementation lane at high effort does the typing (volume-heavy, cheaper per token), and the cross-vendor seat is always the implementation lane — GPT writes, Claude judges. The architect is the most expensive seat in the system, and everything in its context is re-read at Fable prices on every turn — the discipline below matters *more* here than in any cheaper-architect arrangement. Three rules follow.
+The economics of this pattern: Fable orchestrates (judgment-heavy, volume-light), the implementation lane at its pinned or spec-named effort does the typing (volume-heavy, cheaper per token), and the cross-vendor seat is always the implementation lane — GPT writes, Claude judges. The architect is the most expensive seat in the system, and everything in its context is re-read at Fable prices on every turn — the discipline below matters *more* here than in any cheaper-architect arrangement. Three rules follow.
 
 **Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a lane's bug by hand is the same failure in disguise: send a corrected spec back to the lane instead. (One narrow exception: the two-failures takeover, below.)
 
@@ -31,6 +31,8 @@ Four agents, with the cross-vendor check on the implementation side:
 | `opus-implementer` | Claude Opus (high effort) | Optional race lane | Writes the code itself from the six-part spec for high-stakes races. No external dependency. |
 
 How much does the outcome depend on judgment the spec can't capture? Little → `codex-implementer`; a lot, and mistakes are costly → `astra-implementer`, or keep that piece with the architect.
+
+The architect does not route mechanical edits, renames, wiring, boilerplate, config, or pattern-mirroring tests to `astra-implementer` — that is `codex-implementer` work. When the user explicitly sends such work to the lane anyway (vendor diversity, trying the model), it runs at the `medium` baseline and that is a legitimate path, not a routing defect.
 
 ## Turning the pattern off
 
@@ -75,18 +77,22 @@ Implementers share none of your conversation context. Every delegation prompt ca
 7. **Reasoning** — `astra-implementer` only: one line, `REASONING: <effort>`, chosen from the rungs below. The other lanes pin their own effort and ignore this line.
 8. **Model** — optional, any codex lane: one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. Lanes ignore model names that appear anywhere else in the spec — mentioning `gpt-6-astra` in an objective does not reroute a Luna task.
 
-For `astra-implementer`, choose a reasoning effort from this Astra-specific table; Luna stays pinned at max in `codex-implementer`.
+`medium` is the baseline for every `astra-implementer` spec — it is the vendor's recommended default for GPT-6 Astra — and the table lists the reasons to move up. Luna stays pinned at max in `codex-implementer`.
 
-| Astra rung | Use for |
+| Astra rung | Move up when |
 |---|---|
-| `low` / `medium` | Mechanical edits, renames, wiring, boilerplate, config, or tests mirroring an existing pattern — but such work should not be routed to this escalation lane at all. |
+| `medium` | Baseline. Every astra spec starts here, including work the user explicitly routed to the lane. |
 | `high` | Ordinary features with a couple of design decisions left to the lane. |
 | `xhigh` | Tricky logic, multi-file changes with interactions, or the corrected-spec second attempt. |
 | `max` | Concurrency, security-sensitive paths, gnarly debugging, wide-blast-radius refactors, or problems that have resisted two attempts. |
 
-Pick the lowest rung that is adequate; effort is cost and wall-clock, not a quality dial to leave at max.
+If the verification command fully covers the acceptance list — no item the lane would have to report as `not-checkable-by-command` — and a failure costs one re-run, stay at `medium`.
 
-The `REASONING` line is required on every `astra-implementer` spec — this lane runs only escalations. If it is omitted the lane runs at the user's configured default and flags that in `GAPS`; treat that flag as a spec defect to correct, not a valid state.
+`medium` is the floor, not a starting point to shave — the architect does not write `REASONING: low`; the lane still accepts `low` when the user names it explicitly. Effort is cost and wall-clock, not a quality dial to leave at max.
+
+These rungs are written against GPT-6 Astra. When the lane is re-pointed at a new model, re-derive the baseline from that vendor's recommended default rather than inheriting this table — the Sol→Astra copy is how the table went stale.
+
+The `REASONING` line is required on every `astra-implementer` spec — the lane never picks its own effort. If it is omitted the lane runs at the user's configured default and flags that in `GAPS`; treat that flag as a spec defect to correct, not a valid state.
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to the lane.
 
