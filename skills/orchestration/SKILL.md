@@ -73,6 +73,7 @@ Implementers share none of your conversation context. Every delegation prompt ca
 5. **Acceptance** — the observable behaviors that define done, one line each in "given X → Y" form, written by the architect before any lane starts. Every item must be checkable from outside the implementation (a command, an HTTP call, a CLI invocation, a file on disk). This list is the standard the deliverable is measured against; it goes to the implementer and, verbatim, to the reviewer.
 6. **Verification** — the command(s) that prove the acceptance items hold
 7. **Reasoning** — `astra-implementer` only: one line, `REASONING: <effort>`, chosen from the rungs below. The other lanes pin their own effort and ignore this line.
+8. **Model** — optional, any codex lane: one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. Lanes ignore model names that appear anywhere else in the spec — mentioning `gpt-6-astra` in an objective does not reroute a Luna task.
 
 For `astra-implementer`, choose a reasoning effort from this Astra-specific table; Luna stays pinned at max in `codex-implementer`.
 

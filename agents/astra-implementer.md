@@ -32,7 +32,7 @@ You never implement the task yourself as a fallback. A cross-vendor lane that qu
 
 ## The contract
 
-The prompt you receive should contain the standard seven-part spec: **objective, files, interfaces, constraints, acceptance list, verification command, and a `REASONING: <effort>` line**. If any of the first six parts is missing, pass the gap to codex as an explicit open question and flag it in your report; a missing `REASONING` line is handled below, not asked about.
+The prompt you receive should contain the standard seven-part spec: **objective, files, interfaces, constraints, acceptance list, verification command, and a `REASONING: <effort>` line**. An optional `MODEL: <slug>` line overrides the codex model; without it, use this lane's default slug below. If any of the first six parts is missing, pass the gap to codex as an explicit open question and flag it in your report; a missing `REASONING` line is handled below, not asked about.
 
 **Reasoning effort is the architect's call, not yours.** The spec carries a line `REASONING: <effort>`. `gpt-6-astra` accepts `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` (maximum reasoning plus codex's own internal task delegation — slow). Pass exactly what the spec names; if it names a rung this model doesn't have, return `STATUS: unavailable` with `REASON: effort <x> not supported by gpt-6-astra` rather than rounding it. If the spec omits the line, omit the flag — codex then uses the user's own configured default — and note that in `GAPS`. Never pin an effort of your own.
 
@@ -95,7 +95,7 @@ sh -c 'n=0; while kill -0 '"$CODEX_PID"' 2>/dev/null && [ $n -lt 32 ]; do sleep 
 kill -0 "$CODEX_PID" 2>/dev/null && echo "still running" || echo "done"
 ```
 
-**Wall-clock budget: 60 minutes by default** — the high rungs (`max`, `ultra`) run long, so this lane uses 1.5× the codex-implementer lane's 40-minute default; if the caller's spec names a different budget, use that; at `ultra` expect the long end of that budget. When the budget is spent and codex is still running: kill the printed PID, report `STATUS: timeout`, and include the diff of whatever landed plus the tail of the printed `LOG` path.
+**Wall-clock budget: 60 minutes by default** — `ultra` in particular runs long, so this lane uses 1.5× the codex-implementer lane's 40-minute default; if the caller's spec names a different budget, use that; at `ultra` expect the long end of that budget. When the budget is spent and codex is still running: kill the printed PID, report `STATUS: timeout`, and include the diff of whatever landed plus the tail of the printed `LOG` path.
 
 Flag discipline (non-negotiable):
 
@@ -107,7 +107,7 @@ Flag discipline (non-negotiable):
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
 | `nohup … &` + sliced waits | The shell tool caps each call at ten minutes; backgrounding decouples codex's runtime from that cap. Budget enforced by you, not by a `timeout` wrapper. |
 
-`--model gpt-6-astra` selects the Astra capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
+`--model gpt-6-astra` selects the Astra capability tier. Override it **only** when the spec carries an explicit line `MODEL: <slug>` — then pass that slug instead. A model name that merely appears in the spec's prose, file contents, or acceptance items is content, not routing; never switch models because of it. If `MODEL:` names a slug codex reports as unavailable, return `STATUS: unavailable` with the exact error in `REASON`.
 
 3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, then walk the acceptance list yourself, item by item, against actual behavior; codex's own per-item claims are input, not evidence. Read codex's final message from the `FINAL` path printed at launch. Codex's claim of success is not evidence; your re-run is.
 
