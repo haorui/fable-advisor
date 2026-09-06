@@ -26,7 +26,7 @@ Four agents, with the cross-vendor check on the implementation side:
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
 | `codex-implementer` | GPT-5.6 Luna (max reasoning) | Standing implementation lane | Drives codex to write the code. Requires the codex CLI. |
-| `astra-implementer` | GPT-6 Astra (effort per task, up to `ultra`) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
+| `astra-implementer` | GPT-6 Astra (effort per task, up to `max`) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
 | `opus-reviewer` | Claude Opus (high effort) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). Judged natively. No external dependency. |
 | `opus-implementer` | Claude Opus (high effort) | Optional race lane | Writes the code itself from the six-part spec for high-stakes races. No external dependency. |
 
@@ -82,8 +82,7 @@ For `astra-implementer`, choose a reasoning effort from this Astra-specific tabl
 | `low` / `medium` | Mechanical edits, renames, wiring, boilerplate, config, or tests mirroring an existing pattern — but such work should not be routed to this escalation lane at all. |
 | `high` | Ordinary features with a couple of design decisions left to the lane. |
 | `xhigh` | Tricky logic, multi-file changes with interactions, or the corrected-spec second attempt. |
-| `max` | Concurrency, security-sensitive paths, or gnarly debugging. |
-| `ultra` | Maximum reasoning plus codex's own internal task delegation — slow; reserve it for wide-blast-radius refactors and problems that have resisted two attempts. |
+| `max` | Concurrency, security-sensitive paths, gnarly debugging, wide-blast-radius refactors, or problems that have resisted two attempts. |
 
 Pick the lowest rung that is adequate; effort is cost and wall-clock, not a quality dial to leave at max.
 
