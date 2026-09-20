@@ -94,7 +94,7 @@ sh -c 'n=0; while kill -0 '"$CODEX_PID"' 2>/dev/null && [ $n -lt 32 ]; do sleep 
 kill -0 "$CODEX_PID" 2>/dev/null && echo "still running" || echo "done"
 ```
 
-**Wall-clock budget: 40 minutes by default**; if the caller's spec names a different budget, use that. When the budget is spent and codex is still running: kill the printed PID, report `STATUS: timeout`, and include the diff of whatever landed plus the tail of the printed `LOG` path.
+**Wall-clock budget: 60 minutes by default.** Override it **only** when the spec carries an explicit line `BUDGET: <minutes>` — then use that. A duration that merely appears in the spec's prose, file contents, or acceptance items is content, not routing; never change the budget because of it. When the budget is spent and codex is still running: kill the printed PID, report `STATUS: timeout`, and include the diff of whatever landed plus the tail of the printed `LOG` path.
 
 Flag discipline (non-negotiable):
 
@@ -126,7 +126,7 @@ CODEX SAID: [one-line summary of codex's final message, note any disagreement wi
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
 
-**`incomplete` is the last resort** — codex is still running, the wall-clock budget is **not** spent, but the turn has to end anyway. Such a report MUST carry the literal `PID=… FINAL=… LOG=…` line printed at launch, so the caller can send a follow-up message to this same agent, resume the sliced waits, and get the real report. The normal path is to keep slicing until codex exits or the budget is spent — reach for `incomplete` only when you genuinely cannot.
+**`incomplete` is the long-run handoff — not a failure and not a shortfall.** Codex is still running, the wall-clock budget is **not** spent, but the turn has to end anyway. Such a report MUST carry the literal `PID=… FINAL=… LOG=…` line printed at launch, so the caller can send a follow-up message to this same agent, resume the sliced waits, and get the real report. Nothing is killed and no wall-clock is lost — the caller simply decides whether to keep waiting. On a task that is clearly going to outrun the budget, prefer handing back `incomplete` early over slicing in silence to the end of it: the caller can always tell you to resume, and can recover nothing from a turn that ended without a report.
 
 ## Rules
 

@@ -76,6 +76,7 @@ Implementers share none of your conversation context. Every delegation prompt ca
 6. **Verification** — the command(s) that prove the acceptance items hold
 7. **Reasoning** — `astra-implementer` only: one line, `REASONING: <effort>`, chosen from the rungs below. The other lanes pin their own effort and ignore this line.
 8. **Model** — optional, any codex lane: one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. Lanes ignore model names that appear anywhere else in the spec — mentioning `gpt-6-astra` in an objective does not reroute a Luna task.
+9. **Budget** — optional, any codex lane: one line, `BUDGET: <minutes>`, only when the task needs a wall clock other than the lane's 60-minute default. Lanes ignore durations that appear anywhere else in the spec. Raise it for work you expect to run long rather than absorbing a `timeout` report and re-running from scratch; a spent budget kills codex mid-flight, and only the partial diff survives.
 
 `medium` is the baseline for every `astra-implementer` spec — it is the vendor's recommended default for GPT-6 Astra — and the table lists the reasons to move up. Luna stays pinned at max in `codex-implementer`.
 
