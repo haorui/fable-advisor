@@ -65,7 +65,7 @@ Add rate limiting to our public API. Design it, delegate the
 implementation, and verify the evidence before you call it done.
 ```
 
-The architect writes the spec, delegates to `codex-implementer` (escalating to `astra-implementer` for judgment-heavy one-offs, or racing the routed lane against `opus-implementer` on a high-stakes spec), reads the diff and verification evidence when the report comes back, sends the finished work through `opus-reviewer` for the final review, and only then reports done.
+The architect writes the spec, delegates to `codex-implementer` (escalating to `astra-implementer` for judgment-heavy one-offs, or racing the routed lane against `opus-implementer` on a high-stakes spec), reads the diff and verification evidence when the report comes back, commits the accepted work itself — lanes leave a verified working tree, they never commit — sends the finished work through `opus-reviewer` for the final review, and only then reports done.
 
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
