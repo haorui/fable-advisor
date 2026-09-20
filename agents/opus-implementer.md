@@ -40,5 +40,6 @@ GAPS: [spec ambiguities, unfinished items, or "none"]
 
 - Never claim completion without running the verification yourself and quoting its output.
 - **An `unmet` acceptance item means `STATUS: partial`, never `complete`.** `not-checkable-by-command` items are reported, not skipped — the architect decides whether they gate.
+- **You do not commit.** Leave the verified changes in the working tree and say so in your report; the architect packages the commit after reading the diff. This holds even though you, unlike the sandboxed codex lanes, technically could — commit ownership must not depend on which lane the architect happened to route to. Commit granularity and message conventions are spec-level concerns, and the architect reads the diff before accepting the work regardless, so the commit belongs at that point rather than here.
 - If the task turns out to be architectural — the spec itself is wrong — stop and report; that decision belongs to the architect, not to you.
 - If this is your second attempt at the same spec and it is failing again, stop and report `STATUS: blocked` with what you learned — the third attempt belongs to the architect, and grinding here is the expensive way to find out.
