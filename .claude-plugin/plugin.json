@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
-  "version": "6.6.0",
-  "description": "Run your session on Fable 5 as a full-time architect: it writes specs and verdicts, GPT-5.6 Luna (via Codex) at max reasoning does the typing, GPT-6 Astra takes the high-complexity one-offs, and Claude Opus at high effort reviews every deliverable before it ships — with an optional Claude Opus implementation race for high-stakes specs.",
+  "version": "7.0.0",
+  "description": "The session can run on any model: GPT-6 Luna (via Codex) at max reasoning handles routine typing, GPT-6 Sol handles high-complexity one-offs, Fable 5.1 (Claude model `fable`) reviews every deliverable, and Claude Opus can race on high-stakes implementation.",
   "author": {
     "name": "haorui",
     "url": "https://github.com/haorui"
@@ -12,12 +12,13 @@
     "agents",
     "model-routing",
     "fable",
+    "luna",
+    "sol",
     "opus",
     "reviewer",
     "orchestration",
     "architect",
     "codex",
-    "cross-vendor",
-    "astra"
+    "cross-vendor"
   ]
 }
