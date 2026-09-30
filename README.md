@@ -11,7 +11,7 @@ Claude Code lets each subagent run on a different model from the session. This p
 | `luna-implementer` | **GPT-6 Luna** (`gpt-6-luna`, effort pinned at `max`) | Routine implementation via the Codex CLI | Standing implementation lane |
 | `sol-implementer` | **GPT-6 Sol** (`gpt-6-sol`, `medium` baseline) | High-complexity one-offs; the architect names the effort per task in the `REASONING:` line | Escalation lane, never the default |
 | `opus-implementer` | **Claude Opus** (high effort) | Writes the code itself | Optional race lane for high-stakes specs |
-| `fable-advisor` | **Fable 5.1**, Claude model alias `fable` (high effort) | Outside voice and reviewer; REVIEW returns ship / fix-first / rethink, CONSULT returns proceed / revise / rethink | Commitment boundaries and final review; no external dependency |
+| `fable-advisor` | **Fable 5.1**, Claude model alias `fable` (high effort) | Outside voice and reviewer; REVIEW returns ship / fix-first / rethink, CONSULT returns proceed / revise / rethink | Commitment boundaries and final review; no CLI or relay; Claude Opus fallback when Fable is unavailable |
 
 Luna stays pinned at `max`; it ignores any `REASONING:` line and has no default-versus-override distinction. Sol uses the architect's `medium` baseline and requires the architect to name its effort explicitly for each task. The optional Opus lane is for high-stakes races against the routed implementation lane.
 
@@ -43,10 +43,10 @@ Choose whichever model you want for the architect session. Claude Opus 5.5 is a 
 
 ## Requirements
 
-- **Claude Code ≥ 2.1.170** and an account with access to Fable 5.1 for the `fable` model alias used by `fable-advisor`. The session itself can use any model.
+- **Claude Code ≥ 2.1.170** and an account with access to Fable 5.1 for the `fable` model alias used by `fable-advisor` (or Claude Opus, the accepted fallback). The session itself can use any model.
 - **Codex lanes:** the [OpenAI Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`, then `codex login`). `luna-implementer` runs **GPT-6 Luna** (`gpt-6-luna`) at pinned `max` effort; `sol-implementer` runs **GPT-6 Sol** (`gpt-6-sol`) with `medium` as the architect's baseline and effort named for each task in its required `REASONING:` line. Both report `STATUS: unavailable` if the CLI or model access is unavailable; neither silently falls back to Claude. Without Codex, the implementation lanes cannot run.
 - **Optional Codex plugin:** the [Codex plugin for Claude Code](https://github.com/openai/codex-plugin-cc) (`/plugin marketplace add openai/codex-plugin-cc`, then `/plugin install codex@openai-codex`). When enabled, the orchestration skill can use `/codex:adversarial-review` before the `fable-advisor` gate on sensitive deliverables and `/codex:rescue` for user-driven delegation. It is optional; the implementation lanes call `codex exec` directly.
-- **Heads-up:** if the `fable` pin used by `fable-advisor` is unavailable, or is overridden by `CLAUDE_CODE_SUBAGENT_MODEL`, Claude Code silently falls back to the session model. `fable-advisor` then runs on the architect's own session model, so the review gate becomes the architect's own model judging its own deliverable — the self-review the doctrine forbids — with nothing in the transcript to signal it happened. Codex lanes fail loudly with a structured error instead of falling back.
+- **Heads-up:** if the `fable` pin used by `fable-advisor` is unavailable, or is overridden by `CLAUDE_CODE_SUBAGENT_MODEL`, Claude Code silently falls back to the session model — or the call errors outright (e.g. a Fable usage limit, HTTP 429). To make a silent fallback visible, `fable-advisor` reports the model it actually ran on in a `MODEL:` line. Claude Opus is the accepted fallback: an Opus verdict stands, and the architect tells you it came from Opus. On an error or any other model, the architect re-invokes the advisor with `model: "opus"` (the per-invocation parameter outranks the frontmatter pin, but not the env var). Codex lanes fail loudly with a structured error instead of falling back.
 
 Model resolution order in Claude Code: `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` parameter → agent frontmatter → session model. **If `CLAUDE_CODE_SUBAGENT_MODEL` is set, it overrides the advisor's `fable` pin, so your Fable review silently runs on another model.** Check the `env` block of `~/.claude/settings.json` too. Effort resolution: `CLAUDE_CODE_EFFORT_LEVEL` env var → agent frontmatter `effort` → session `/effort`. `fable-advisor` and `opus-implementer` set `effort: high`; Luna pins GPT-6 Luna to `max`, while Sol passes the effort from the required `REASONING:` line.
 
@@ -75,7 +75,7 @@ verify evidence before accepting any lane's report, and get
 
 ## The final review
 
-Every deliverable ends at `fable-advisor`, the review gate. It runs on Claude model alias `fable` (Fable 5.1), reads the accumulated diff in a clean context, and returns ship / fix-first / rethink. It also serves as the outside voice at commitment boundaries through CONSULT mode (proceed / revise / rethink). It has no external dependency — no CLI, relay, or vendor availability to fail. The architect can use any model, often Opus 5.5; if the architect is already Fable 5.1, the review is fresh eyes rather than an independent-model check.
+Every deliverable ends at `fable-advisor`, the review gate. It runs on Claude model alias `fable` (Fable 5.1), reads the accumulated diff in a clean context, and returns ship / fix-first / rethink. It also serves as the outside voice at commitment boundaries through CONSULT mode (proceed / revise / rethink). It has no CLI or relay to fail; if Fable 5.1 is unavailable, the review falls back to Claude Opus, and the advisor's `MODEL:` line says so. The architect can use any model, often Opus 5.5; if the architect is already Fable 5.1, the review is fresh eyes rather than an independent-model check.
 
 ## FAQ
 
