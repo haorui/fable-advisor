@@ -9,7 +9,7 @@ The session is the architect, running on whatever model the user chose. It owns 
 
 ## Cost discipline — the prime directive
 
-The economics of this pattern: the session model orchestrates (judgment-heavy, volume-light), GPT-6 Luna does the routine typing at pinned `max` effort, GPT-6 Sol takes the high-complexity one-offs at the architect's explicitly named effort, and Fable 5.1 reviews in a clean context. The cross-vendor perspective sits at the implementation lane — GPT writes, Claude/Fable judges. Everything in the architect's context is re-read at the session model's prices on every turn. Three rules follow.
+The economics of this pattern: the session model orchestrates (judgment-heavy, volume-light), GPT-6 Luna does the routine typing at pinned `max` effort, GPT-6.1 Sol takes the high-complexity one-offs at the architect's explicitly named effort, and Fable 5.1 reviews in a clean context. The cross-vendor perspective sits at the implementation lane — GPT writes, Claude/Fable judges. Everything in the architect's context is re-read at the session model's prices on every turn. Three rules follow.
 
 **Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a lane's bug by hand is the same failure in disguise: send a corrected spec back to the lane instead. (One narrow exception: the two-failures takeover, below.)
 
@@ -26,7 +26,7 @@ Four agents, with the cross-vendor check on the implementation side:
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
 | `luna-implementer` | GPT-6 Luna (effort pinned at `max`) | Standing implementation lane | Drives codex to write the code. Requires the codex CLI. |
-| `sol-implementer` | GPT-6 Sol (`REASONING:` required; `medium` baseline) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
+| `sol-implementer` | GPT-6.1 Sol (`REASONING:` required; `medium` baseline) | High-complexity lane | Drives codex to write the code; one-off escalations for judgment-heavy work, never the default. Requires the codex CLI. |
 | `fable-advisor` | Fable 5.1 (Claude model `fable`, high effort) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). No CLI or relay; falls back to Claude Opus when Fable is unavailable (see the final-review section). |
 | `opus-implementer` | Claude Opus (high effort) | Optional race lane | Writes the code itself from the six-part spec for high-stakes races. No external dependency. |
 
@@ -39,9 +39,9 @@ If a lane returns `blocked`, surface the denial to the user and never re-send th
 
 ## Showing which model runs each step
 
-Claude Code's UI shows each subagent call by its agent name and the `description` passed to it, while the lane wrappers themselves run on Sonnet. Label each Agent `description` with the model and effort in the form `<Model> · <effort>: <task>` — for example `GPT-6 Luna · max: add pagination to /orders`, `GPT-6 Sol · xhigh: fix token-refresh race`, `Fable 5.1: final review`, or `Claude Opus · high: race on the checkout refactor`.
+Claude Code's UI shows each subagent call by its agent name and the `description` passed to it, while the lane wrappers themselves run on Sonnet. Label each Agent `description` with the model and effort in the form `<Model> · <effort>: <task>` — for example `GPT-6 Luna · max: add pagination to /orders`, `GPT-6.1 Sol · xhigh: fix token-refresh race`, `Fable 5.1: final review`, or `Claude Opus · high: race on the checkout refactor`.
 
-Announce each routing decision in one line before delegating: `→ luna-implementer · GPT-6 Luna · max`, `→ sol-implementer · GPT-6 Sol · medium`, `→ fable-advisor · Fable 5.1`, or `→ opus-implementer · Claude Opus · high`. Keep the lane's `LANE:` line when summarizing its report; it identifies the model and effort that actually ran.
+Announce each routing decision in one line before delegating: `→ luna-implementer · GPT-6 Luna · max`, `→ sol-implementer · GPT-6.1 Sol · medium`, `→ fable-advisor · Fable 5.1`, or `→ opus-implementer · Claude Opus · high`. Keep the lane's `LANE:` line when summarizing its report; it identifies the model and effort that actually ran.
 
 The lane agents carry UI colours: Luna blue, Sol orange, `fable-advisor` purple, and `opus-implementer` green. Luna's effort is pinned at `max`, with no default/override distinction; Sol's effort is always named explicitly by the architect in the required `REASONING:` line.
 
@@ -86,7 +86,7 @@ Implementers share none of your conversation context. Every delegation prompt ca
 5. **Acceptance** — the observable behaviors that define done, one line each in "given X → Y" form, written by the architect before any lane starts. Every item must be checkable from outside the implementation (a command, an HTTP call, a CLI invocation, a file on disk). This list is the standard the deliverable is measured against; it goes to the implementer and, verbatim, to the reviewer.
 6. **Verification** — the command(s) that prove the acceptance items hold
 7. **Reasoning** — `sol-implementer` only: the architect must provide one line, `REASONING: <effort>`, chosen from the rungs below. Luna pins effort at `max` and ignores this line; the Claude lanes use their frontmatter effort.
-8. **Model** — optional, any codex lane: one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. Lanes ignore model names that appear anywhere else in the spec — mentioning `gpt-6-sol` in an objective does not reroute a Luna task.
+8. **Model** — optional, any codex lane: one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. Lanes ignore model names that appear anywhere else in the spec — mentioning `gpt-6.1-sol` in an objective does not reroute a Luna task.
 9. **Budget** — optional, any codex lane: one line, `BUDGET: <minutes>`, only when the task needs a wall clock other than the lane's 60-minute default. Lanes ignore durations that appear anywhere else in the spec. Raise it for work you expect to run long rather than absorbing a `timeout` report and re-running from scratch; a spent budget kills codex mid-flight, and only the partial diff survives.
 
 `medium` is the architect's baseline for every `sol-implementer` spec — and the table lists the reasons to move up. Luna stays pinned at max in `luna-implementer`.
@@ -102,7 +102,7 @@ If the verification command fully covers the acceptance list — no item the lan
 
 `medium` is the floor, not a starting point to shave — the architect does not write `REASONING: low`; the lane still accepts `low` when the user names it explicitly. Effort is cost and wall-clock, not a quality dial to leave at max.
 
-These rungs were set for GPT-6 Sol and must be re-derived if the lane is re-pointed to a different model.
+These rungs were set for GPT-6 Sol and carried over unchanged to GPT-6.1 Sol (same tier, same five rungs, verified 2026-10-01); re-derive them if the lane is re-pointed to a different tier.
 
 The `REASONING:` line is required on every `sol-implementer` spec — the lane never picks its own effort. If it is omitted the lane runs at the user's configured default and flags that in `GAPS`; treat that flag as a spec defect to correct, not a valid state.
 

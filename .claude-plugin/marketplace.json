@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
   "metadata": {
-    "description": "The session can run on any model: GPT-6 Luna (via Codex) at max reasoning handles routine typing, GPT-6 Sol handles high-complexity one-offs, Fable 5.1 (Claude model `fable`) reviews every deliverable, and Claude Opus can race on high-stakes implementation."
+    "description": "The session can run on any model: GPT-6 Luna (via Codex) at max reasoning handles routine typing, GPT-6.1 Sol handles high-complexity one-offs, Fable 5.1 (Claude model `fable`) reviews every deliverable, and Claude Opus can race on high-stakes implementation."
   },
   "owner": {
     "name": "haorui",
@@ -11,7 +11,7 @@
     {
       "name": "fable-advisor",
       "source": "./",
-      "description": "The session can run on any model: GPT-6 Luna (via Codex) at max reasoning handles routine typing, GPT-6 Sol handles high-complexity one-offs, Fable 5.1 (Claude model `fable`) reviews every deliverable, and Claude Opus can race on high-stakes implementation."
+      "description": "The session can run on any model: GPT-6 Luna (via Codex) at max reasoning handles routine typing, GPT-6.1 Sol handles high-complexity one-offs, Fable 5.1 (Claude model `fable`) reviews every deliverable, and Claude Opus can race on high-stakes implementation."
     }
   ]
 }
