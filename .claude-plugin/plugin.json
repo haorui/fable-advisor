@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
-  "version": "7.2.0",
-  "description": "The session can run on any model: GPT-6 Luna (via Codex) at max reasoning handles routine typing, GPT-6.1 Sol handles high-complexity one-offs, Fable 5.1 (Claude model `fable`) reviews every deliverable, and Claude Opus can race on high-stakes implementation.",
+  "version": "8.0.0",
+  "description": "The session can run on any model: GPT-6.1 Sol (via Codex) handles all implementation at a per-task reasoning effort, Claude Sonnet takes over when Sol is unavailable, and Fable 5.1 (Claude model `fable`) reviews every deliverable.",
   "author": {
     "name": "haorui",
     "url": "https://github.com/haorui"
@@ -12,9 +12,8 @@
     "agents",
     "model-routing",
     "fable",
-    "luna",
     "sol",
-    "opus",
+    "sonnet",
     "reviewer",
     "orchestration",
     "architect",
