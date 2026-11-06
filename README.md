@@ -1,18 +1,18 @@
 # Fable Advisor
 
-**Your session runs on whichever model you choose (often Claude Opus 5.5). GPT-6.1 Sol handles all implementation through Codex, Claude Sonnet takes over only when Sol is unavailable, and Fable 5.1 reviews every deliverable.**
+**Your session runs on whichever model you choose (often Claude Opus 5.5). GPT-6.1 Sol handles substantial implementation through Codex, the architect makes small, local changes directly, Claude Sonnet takes over only when Sol is unavailable, and Fable 5.1 reviews every deliverable.**
 
 > Experimental fork of [DannyMac180/fable-advisor](https://github.com/DannyMac180/fable-advisor). This fork keeps the architect model open: the session owns requirements, decomposition, specs, routing, and verification, while specialized lanes implement and review the work.
 
-Claude Code lets each subagent run on a different model from the session. This plugin uses that to route all implementation through GPT-6.1 Sol via Codex, with Claude Sonnet as the fallback when Sol is unavailable and a Claude reviewer in a clean context before anything is called done:
+Claude Code lets each subagent run on a different model from the session. This plugin uses that to route substantial implementation through GPT-6.1 Sol via Codex, with Claude Sonnet as the fallback when Sol is unavailable and a Claude reviewer in a clean context before anything is called done:
 
 | Agent | Producer | Role | Lane |
 |---|---|---|---|
-| `sol-implementer` | **GPT-6.1 Sol** (`gpt-6.1-sol`, `medium` baseline) | All implementation; the architect names the effort per task in the required `REASONING:` line; requires the Codex CLI | Default/standing implementation lane |
+| `sol-implementer` | **GPT-6.1 Sol** (`gpt-6.1-sol`, `medium` baseline) | Delegated implementation; the architect names the effort per task in the required `REASONING:` line; requires the Codex CLI | Default/standing implementation lane |
 | `sonnet-implementer` | **Claude Sonnet** (high effort) | Writes the code itself; no external dependency | Fallback only when Sol is unavailable |
 | `fable-advisor` | **Fable 5.1**, Claude model alias `fable` (high effort) | Outside voice and reviewer; REVIEW returns ship / fix-first / rethink, CONSULT returns proceed / revise / rethink | Commitment boundaries and final review; no CLI or relay; Claude Opus fallback when Fable is unavailable |
 
-Sol uses the architect's `medium` baseline and requires the architect to name its effort explicitly for each task, including mechanical and routine work. Escalation raises Sol's `REASONING:` one or more rungs. Sonnet is the fallback only after Sol reports `STATUS: unavailable`; the architect makes that routing decision.
+Sol uses the architect's `medium` baseline and requires the architect to name its effort explicitly for each delegated task, including mechanical and routine work. Small, local changes (a few lines, doc or config edits, small follow-up fixes) the architect makes directly, because there the handoff costs more than the work; they still go through the final review. Escalation raises Sol's `REASONING:` one or more rungs. Sonnet is the fallback only after Sol reports `STATUS: unavailable`; the architect makes that routing decision.
 
 The cross-vendor perspective sits at the default implementation lane — GPT writes, Claude/Fable judges. Under the Sonnet fallback, Claude writes and reviews, so the deliverable loses its cross-vendor check. The session model remains the user's choice. When the architect is not Fable 5.1, the advisor consult and final review are a second model, typically a stronger one reading in a clean context; when the architect is also Fable 5.1, the review is a fresh-eyes check rather than an independent-model check. The architect does not report done before the final review returns a verdict.
 
@@ -58,16 +58,16 @@ Add rate limiting to our public API. Design it, delegate the
 implementation, and verify the evidence before you call it done.
 ```
 
-The architect writes the spec, labels and announces the routing decision, and sends all implementation to `sol-implementer` with effort named in `REASONING:`. Escalation raises that effort; only Sol's unavailability triggers the `sonnet-implementer` fallback for the rest of the session. The architect reads the diff and verification evidence, accepts the working tree (lanes never commit), sends the finished work through `fable-advisor`, and reports done only after a verdict.
+The architect writes the spec, labels and announces the routing decision, sends substantial implementation to `sol-implementer` with effort named in `REASONING:`, and makes small, local changes directly. Escalation raises that effort; only Sol's unavailability triggers the `sonnet-implementer` fallback for the rest of the session. The architect reads the diff and verification evidence, accepts the working tree (lanes never commit), sends the finished work through `fable-advisor`, and reports done only after a verdict.
 
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
 ```
-You are the architect — minimize your own token volume. Delegate all
-implementation through the orchestration skill's routing table (never
-type code yourself, except the documented two-failures takeover),
+You are the architect. Delegate substantial implementation through the
+orchestration skill's routing table and make small, local changes
+directly, as its "Delegate or implement directly" section defines;
 label each delegation with its model, delegate broad codebase exploration
-to cheap read-only agents, consult `fable-advisor` at commitment boundaries,
+to read-only agents, consult `fable-advisor` at commitment boundaries,
 verify evidence before accepting any lane's report, and get
 `fable-advisor`'s verdict before reporting any deliverable done.
 ```
@@ -84,7 +84,7 @@ Every deliverable ends at `fable-advisor`, the review gate. It runs on Claude mo
 
 **Why use Fable 5.1 for review?** The advisor brings a clean-context Claude review at commitment boundaries and before the architect reports a deliverable done. If the session itself is Fable, the review still supplies fresh eyes, though it is not an independent-model check.
 
-**Upstream versions?** This fork's lineage: upstream v4 (Opus architect, Codex routine lane, Fable escalation + review) → v5 (Fable architect, Codex implementation lane, native Claude final review) → v6 (one fixed arrangement, Codex implements and Claude reviews; profiles removed) → v6.1 (adds a Sol escalation lane) → v6.2 (updates the escalation model) → v6.3 (`medium` escalation baseline and a separate routing rule) → v7.0.0: rename the routine Codex lane, high-complexity Codex lane, and earlier Claude review agent to `luna-implementer`, `sol-implementer`, and `fable-advisor` on GPT-6 Luna, GPT-6 Sol, and Fable 5.1, and stop assuming the architect runs on Fable → v8.0.0 (remove `luna-implementer`; `sol-implementer` becomes the default lane with effort-rung escalation; `opus-implementer` becomes `sonnet-implementer`, a fallback used only when Sol is unavailable; parallel same-spec lanes removed). For the original pattern, see [DannyMac180/fable-advisor](https://github.com/DannyMac180/fable-advisor).
+**Upstream versions?** This fork's lineage: upstream v4 (Opus architect, Codex routine lane, Fable escalation + review) → v5 (Fable architect, Codex implementation lane, native Claude final review) → v6 (one fixed arrangement, Codex implements and Claude reviews; profiles removed) → v6.1 (adds a Sol escalation lane) → v6.2 (updates the escalation model) → v6.3 (`medium` escalation baseline and a separate routing rule) → v7.0.0: rename the routine Codex lane, high-complexity Codex lane, and earlier Claude review agent to `luna-implementer`, `sol-implementer`, and `fable-advisor` on GPT-6 Luna, GPT-6 Sol, and Fable 5.1, and stop assuming the architect runs on Fable → v8.0.0 (remove `luna-implementer`; `sol-implementer` becomes the default lane with effort-rung escalation; `opus-implementer` becomes `sonnet-implementer`, a fallback used only when Sol is unavailable; parallel same-spec lanes removed) → v8.1.0 (with an Opus-led session the norm, architect token volume no longer decides routing; the architect makes small, local changes directly and delegates substantial work). For the original pattern, see [DannyMac180/fable-advisor](https://github.com/DannyMac180/fable-advisor).
 
 ## License
 

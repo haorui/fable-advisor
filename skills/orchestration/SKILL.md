@@ -1,23 +1,31 @@
 ---
 name: orchestration
-description: 'Routing doctrine for the architect-as-orchestrator pattern — how a session on any model delegates all implementation to the default `sol-implementer` lane, uses `sonnet-implementer` only when Sol is unavailable, consults `fable-advisor` at commitment boundaries, and gets every deliverable reviewed by `fable-advisor` before reporting done. USE WHEN delegating implementation work, routing to the Sonnet fallback, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), choosing a reasoning effort for sol-implementer, writing a spec for a subagent, deciding whether to consult or invoke fable-advisor, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
+description: 'Routing doctrine for the architect-as-orchestrator pattern — how a session on any model delegates substantial implementation to the default `sol-implementer` lane while making small, local changes directly, uses `sonnet-implementer` only when Sol is unavailable, consults `fable-advisor` at commitment boundaries, and gets every deliverable reviewed by `fable-advisor` before reporting done. USE WHEN delegating implementation work, deciding whether to delegate or implement directly, routing to the Sonnet fallback, turning architect mode off ("solo mode", "不用车道", "关闭 architect 模式", or the `fable-advisor lane profile: off` line in CLAUDE.md), turning it back on ("architect mode on", "use lanes", "开启 architect 模式"), choosing a reasoning effort for sol-implementer, writing a spec for a subagent, deciding whether to consult or invoke fable-advisor, using the Codex plugin''s review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.'
 ---
 
 # Orchestration — the architect's routing doctrine
 
-The session is the architect, running on whatever model the user chose. It owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. Every implementation task gets delegated to `sol-implementer`, the default/standing lane for all implementation; `sonnet-implementer` is the fallback only when Sol is unavailable. Every finished deliverable gets a review from `fable-advisor` before the architect reports done.
+The session is the architect, running on whatever model the user chose. It owns requirements, architecture, decomposition, specs, routing, and verification. Substantial implementation goes to `sol-implementer`, the default lane; small, local changes the architect makes directly (see "Delegate or implement directly"). `sonnet-implementer` is the fallback only when Sol is unavailable. Every finished deliverable, delegated or direct, gets a review from `fable-advisor` before the architect reports done.
 
-## Cost discipline — the prime directive
+## Delegate or implement directly
 
-The economics of this pattern: the session model orchestrates (judgment-heavy, volume-light), GPT-6.1 Sol does all implementation at the architect's explicitly named effort, Claude Sonnet takes over only when Sol is unavailable, and Fable 5.1 reviews in a clean context. The cross-vendor perspective sits at the default implementation lane — GPT writes, Claude/Fable judges. Everything in the architect's context is re-read at the session model's prices on every turn. Three rules follow.
+This doctrine began with a Fable architect driving cheaper Codex lanes, where the architect's tokens were the premium to protect and "never type code" followed from that. The typical session is now Opus-led, and architect token volume no longer decides routing. A handoff has real costs. The architect writes a spec, the lane runs, and the architect re-reads the diff and re-runs verification. Each handoff also drops some context the architect had. A lane is worth those costs when it buys at least one of these:
 
-**Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a lane's bug by hand is the same failure in disguise: send a corrected spec back to the lane instead. (One narrow exception: the two-failures takeover, below.)
+- **Vendor diversity**: GPT-6.1 Sol writes and Claude/Fable judges, so a second model family catches what one vendor's models jointly miss.
+- **Parallelism**: independent specs run at the same time.
+- **Context isolation**: a long implementation run, with its exploration and test output, stays out of the architect's context.
 
-**Keep the context lean.** Delegate broad exploration, codebase searches, and log-grepping to a cheap read-only agent and keep only the conclusions; read files yourself only when the decision genuinely depends on the exact code. Don't paste long files, full diffs, or verbose command output into the conversation when a path reference or an excerpt will do.
+**Delegate to `sol-implementer`** for multi-file features and new modules, for work where the code will be much larger than the spec that describes it, for independent pieces that can run in parallel, and for security-sensitive or wide-blast-radius changes where a cross-vendor author is worth having.
 
-**Reason once, then hand off.** Do the hard thinking — the architecture, the interface design, the debugging hypothesis — in one pass, capture it in the spec, and let the lane carry it from there. Re-deriving decisions across turns burns the premium twice.
+**Implement directly** when the handoff would cost more than the work. That covers a change of a few lines in one or two files; doc, config, or prompt edits where the exact wording is the decision; small follow-up fixes to a lane diff the architect has already read; and a change tied so closely to the architect's current reasoning that a spec would have to restate the code. Announce it in one line (`→ direct · <session model>: <task>`) so routing stays visible. If a direct change grows past that size, stop and write the spec. A substantive defect in a lane's diff is not a small follow-up fix. Send it back as a corrected spec, where it counts under the two-failures takeover.
 
-What stays with the architect regardless of cost: decomposition, interface design, hypothesis selection when debugging, spec writing, lane routing, and judging verification evidence. Those tokens are what the premium is for — everything else is a candidate for delegation.
+Either way, the rest of this doctrine holds. Verification evidence comes before acceptance, and the `fable-advisor` gate comes before done. A direct change skips the delegation prompt, not the spec's acceptance list and verification command: write both before the edit, because the review brief carries them. A direct change has no cross-vendor author; say so in the report.
+
+**Keep the context lean.** Delegate broad exploration, codebase searches, and log-grepping to a read-only agent and keep only its conclusions. Read files yourself only when the decision genuinely depends on the exact code. Don't paste long files, full diffs, or verbose command output into the conversation when a path reference or an excerpt will do.
+
+**Reason once, then hand off.** Do the hard thinking (the architecture, the interface design, the debugging hypothesis) in one pass, capture it in the spec, and let the lane carry it from there. Re-deriving decisions across turns wastes the work and lets the spec drift.
+
+Whatever the routing, these stay with the architect: decomposition, interface design, hypothesis selection when debugging, spec writing, lane routing, and judging verification evidence.
 
 ## The lanes
 
@@ -25,11 +33,11 @@ Three agents, with the cross-vendor check on the default implementation side:
 
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
-| `sol-implementer` | GPT-6.1 Sol (`REASONING:` required; `medium` baseline) | Default implementation lane | Drives codex to write all implementation code, including mechanical and routine work. Requires the codex CLI. |
+| `sol-implementer` | GPT-6.1 Sol (`REASONING:` required; `medium` baseline) | Default implementation lane | Drives codex to write all delegated implementation code, including mechanical and routine work. Requires the codex CLI. |
 | `sonnet-implementer` | Claude Sonnet (high effort) | Fallback only when Sol is unavailable | Writes the code itself from the six-part spec. No external dependency. |
 | `fable-advisor` | Fable 5.1 (Claude model `fable`, high effort) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). No CLI or relay; falls back to Claude Opus when Fable is unavailable (see the final-review section). |
 
-All implementation goes to `sol-implementer`; what varies with judgment and risk is the `REASONING:` rung, not the lane.
+All delegated implementation goes to `sol-implementer`; what varies with judgment and risk is the `REASONING:` rung, not the lane.
 
 If a lane returns `blocked`, surface the denial to the user and never re-send the lane with a reworded prompt. `blocked` does not count toward the two-failures takeover.
 
@@ -64,7 +72,7 @@ fable-advisor lane profile: off
 
 `off` is the only value that line recognises. While it is active, nothing in this skill applies: the session reads, implements, and verifies directly, with no lane delegation, no mandatory consult, and no mandatory review gate. The three lane agents run only when the user explicitly asks for one, and running one does not turn the pattern back on. The session announces it once, at the first implementation step ("architect mode off: implementing directly"). In-session beats the `CLAUDE.md` line, and a project's line beats the user's. To turn the pattern back on in-session, say "architect mode on", "use lanes", or "开启 architect 模式".
 
-**The two-failures takeover.** A task that fails its spec once gets a corrected spec back to `sol-implementer`, and the architect may raise its `REASONING:` one or more rungs — this is the escalation path. If the session is already using the Sonnet fallback, send the corrected spec back to Sonnet instead. A second failure of the same task, in any lane, triggers the takeover: the architect implements it personally — the sole exception to "never type code". The budget is two attempts per task, not two per lane. The takeover is announced explicitly ("taking this over after two lane failures"), kept to the failing piece, and the resulting diff still goes through the review gate like everyone else's. **What counts as a failure is narrow**: a structured report whose evidence shows the spec unmet — `incomplete`, `timeout`, `unavailable`, and `blocked` never qualify (see Verification). An empty, placeholder, or free-text report is *not* failure evidence — before counting any failure, check the working tree yourself (`git status`, read the diff, re-run the verification command). If the work actually landed, the response is a follow-up message to the *same* lane agent demanding its structured report — naming any unreported scope you found in the diff — not a failure tally and not a redo.
+**The two-failures takeover.** A task that fails its spec once gets a corrected spec back to `sol-implementer`, and the architect may raise its `REASONING:` one or more rungs — this is the escalation path. If the session is already using the Sonnet fallback, send the corrected spec back to Sonnet instead. A second failure of the same task, in any lane, triggers the takeover: the architect implements it personally, whatever its size. The budget is two attempts per task, not two per lane. The takeover is announced explicitly ("taking this over after two lane failures"), kept to the failing piece, and the resulting diff still goes through the review gate like everyone else's. **What counts as a failure is narrow**: a structured report whose evidence shows the spec unmet — `incomplete`, `timeout`, `unavailable`, and `blocked` never qualify (see Verification). An empty, placeholder, or free-text report is *not* failure evidence — before counting any failure, check the working tree yourself (`git status`, read the diff, re-run the verification command). If the work actually landed, the response is a follow-up message to the *same* lane agent demanding its structured report — naming any unreported scope you found in the diff — not a failure tally and not a redo.
 
 ## Commitment boundaries — the outside voice
 
@@ -83,7 +91,7 @@ Act on the verdict or surface the disagreement — never silently ignore it. A c
 
 ## The spec contract
 
-Implementers share none of your conversation context. Every delegation prompt carries the contract below:
+Implementers share none of your conversation context. Every delegation prompt carries the six core parts below — this is "the six-part spec" every lane refers to. A `sol-implementer` spec adds the Sol lane lines that follow them: `REASONING:` always, `MODEL:` and `BUDGET:` only when needed.
 
 1. **Objective** — what to build or change, one paragraph
 2. **Files** — exact paths to create or modify
@@ -91,9 +99,12 @@ Implementers share none of your conversation context. Every delegation prompt ca
 4. **Constraints** — project conventions, things not to touch
 5. **Acceptance** — the observable behaviors that define done, one line each in "given X → Y" form, written by the architect before any lane starts. Every item must be checkable from outside the implementation (a command, an HTTP call, a CLI invocation, a file on disk). This list is the standard the deliverable is measured against; it goes to the implementer and, verbatim, to the reviewer.
 6. **Verification** — the command(s) that prove the acceptance items hold
-7. **Reasoning** — required on every `sol-implementer` spec: the architect must provide one line, `REASONING: <effort>`, chosen from the rungs below. `sonnet-implementer` ignores it and uses its frontmatter effort.
-8. **Model** — optional, `sol-implementer` only (the only codex lane): one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. The lane ignores model names that appear anywhere else in the spec — mentioning another model in an objective does not switch the model.
-9. **Budget** — optional, `sol-implementer` only (the only codex lane): one line, `BUDGET: <minutes>`, only when the task needs a wall clock other than the lane's 60-minute default. The lane ignores durations that appear anywhere else in the spec. Raise it for work you expect to run long rather than absorbing a `timeout` report and re-running from scratch; a spent budget kills codex mid-flight, and only the partial diff survives.
+
+Sol lane lines (`sol-implementer` only, the only codex lane):
+
+- **Reasoning** — required on every `sol-implementer` spec: the architect must provide one line, `REASONING: <effort>`, chosen from the rungs below. `sonnet-implementer` ignores it and uses its frontmatter effort.
+- **Model** — optional: one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. The lane ignores model names that appear anywhere else in the spec — mentioning another model in an objective does not switch the model.
+- **Budget** — optional: one line, `BUDGET: <minutes>`, only when the task needs a wall clock other than the lane's 60-minute default. The lane ignores durations that appear anywhere else in the spec. Raise it for work you expect to run long rather than absorbing a `timeout` report and re-running from scratch; a spent budget kills codex mid-flight, and only the partial diff survives.
 
 `medium` is the architect's baseline for every `sol-implementer` spec — and the table lists the reasons to move up. Mechanical and routine work stays at `medium`.
 
@@ -130,7 +141,7 @@ The review brief carries the spec's acceptance list verbatim, plus held-back cas
 
 A `ship` verdict is itself a claim, not evidence. Before reporting done on a ship, confirm the reviewer judged the actual change set — its findings, or the files it cites, must be consistent with the real diff. A ship rendered against an empty or wrong change set is void: fix the brief (usually the instructions for locating the changes) and re-invoke.
 
-What the review buys depends on the session model. When the architect is not a Fable model, the consult and review are a second model, typically a stronger one reading in a clean context. When the architect is also a Fable model — or the review fell back to Opus while the architect runs on Opus — the review is a fresh-eyes check, not an independent-model check. Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings go back through the lane that produced the change as corrected specs.
+What the review buys depends on the session model. When the architect is not a Fable model, the consult and review are a second model, typically a stronger one reading in a clean context. When the architect is also a Fable model — or the review fell back to Opus while the architect runs on Opus — the review is a fresh-eyes check, not an independent-model check. Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings are routed like any other change: substantive defects go back to the lane that produced the change as corrected specs; small ones the architect fixes directly and announces.
 
 ## The Codex plugin (optional)
 
