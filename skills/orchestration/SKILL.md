@@ -83,7 +83,7 @@ Act on the verdict or surface the disagreement — never silently ignore it. A c
 
 ## The spec contract
 
-Implementers share none of your conversation context. Every delegation prompt carries the contract below:
+Implementers share none of your conversation context. Every delegation prompt carries the six core parts below — this is "the six-part spec" every lane refers to. A `sol-implementer` spec adds the Sol lane lines that follow them: `REASONING:` always, `MODEL:` and `BUDGET:` only when needed.
 
 1. **Objective** — what to build or change, one paragraph
 2. **Files** — exact paths to create or modify
@@ -91,9 +91,12 @@ Implementers share none of your conversation context. Every delegation prompt ca
 4. **Constraints** — project conventions, things not to touch
 5. **Acceptance** — the observable behaviors that define done, one line each in "given X → Y" form, written by the architect before any lane starts. Every item must be checkable from outside the implementation (a command, an HTTP call, a CLI invocation, a file on disk). This list is the standard the deliverable is measured against; it goes to the implementer and, verbatim, to the reviewer.
 6. **Verification** — the command(s) that prove the acceptance items hold
-7. **Reasoning** — required on every `sol-implementer` spec: the architect must provide one line, `REASONING: <effort>`, chosen from the rungs below. `sonnet-implementer` ignores it and uses its frontmatter effort.
-8. **Model** — optional, `sol-implementer` only (the only codex lane): one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. The lane ignores model names that appear anywhere else in the spec — mentioning another model in an objective does not switch the model.
-9. **Budget** — optional, `sol-implementer` only (the only codex lane): one line, `BUDGET: <minutes>`, only when the task needs a wall clock other than the lane's 60-minute default. The lane ignores durations that appear anywhere else in the spec. Raise it for work you expect to run long rather than absorbing a `timeout` report and re-running from scratch; a spent budget kills codex mid-flight, and only the partial diff survives.
+
+Sol lane lines (`sol-implementer` only, the only codex lane):
+
+- **Reasoning** — required on every `sol-implementer` spec: the architect must provide one line, `REASONING: <effort>`, chosen from the rungs below. `sonnet-implementer` ignores it and uses its frontmatter effort.
+- **Model** — optional: one line, `MODEL: <slug>`, only when the architect deliberately wants a codex model other than the lane's default. The lane ignores model names that appear anywhere else in the spec — mentioning another model in an objective does not switch the model.
+- **Budget** — optional: one line, `BUDGET: <minutes>`, only when the task needs a wall clock other than the lane's 60-minute default. The lane ignores durations that appear anywhere else in the spec. Raise it for work you expect to run long rather than absorbing a `timeout` report and re-running from scratch; a spent budget kills codex mid-flight, and only the partial diff survives.
 
 `medium` is the architect's baseline for every `sol-implementer` spec — and the table lists the reasons to move up. Mechanical and routine work stays at `medium`.
 
