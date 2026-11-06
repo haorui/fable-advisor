@@ -1,0 +1,5 @@
+{
+  "agentType": "fable-advisor:sol-implementer",
+  "description": "generic synthetic task",
+  "toolUseId": "toolu_fake_sync"
+}
