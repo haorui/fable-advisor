@@ -74,7 +74,7 @@ verify evidence before accepting any lane's report, and get
 
 ## The final review
 
-Every deliverable ends at `fable-advisor`, the review gate. It runs on Claude model alias `fable` (Fable 5.1), reads the accumulated diff in a clean context, and returns ship / fix-first / rethink. It also serves as the outside voice at commitment boundaries through CONSULT mode (proceed / revise / rethink). It has no CLI or relay to fail; if Fable 5.1 is unavailable, the review falls back to Claude Opus, and the advisor's `MODEL:` line says so. The architect can use any model, often Opus 5.5; if the architect is already Fable 5.1, the review is fresh eyes rather than an independent-model check.
+Every deliverable ends at `fable-advisor`, the review gate. It runs on Claude model alias `fable` (Fable 5.1), reads the accumulated diff in a clean context, and returns ship / fix-first / rethink. The tier depends on who wrote the change. FULL, with held-back cases the implementer never saw, applies to anything with lane-written code and to risky direct changes. LIGHT, a single pass at medium effort that still re-runs verification, applies only when the deliverable consists entirely of the architect's own small direct changes. It also serves as the outside voice at commitment boundaries through CONSULT mode (proceed / revise / rethink). It has no CLI or relay to fail; if Fable 5.1 is unavailable, the review falls back to Claude Opus, and the advisor's `MODEL:` line says so. The architect can use any model, often Opus 5.5; if the architect is already Fable 5.1, the review is fresh eyes rather than an independent-model check.
 
 ## FAQ
 
