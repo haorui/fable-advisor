@@ -45,6 +45,7 @@ MODEL: [the model name from your system prompt, e.g. Fable 5.1 or Opus 5.5]
 STATUS: complete | insufficient-brief
 VERDICT: ship | fix-first | rethink   (review)  /  proceed | revise | rethink   (consult) — only when STATUS: complete
 FINDINGS: [file + fix for each problem, or the deciding risk for a consult]
+UNCONFIRMED: [third-party findings you could not substantiate, one clause each — omit the line if none]
 ACCEPTANCE: [one line per item — met / unmet — and one line per held-back case — pass / fail]
 ```
 
@@ -54,5 +55,6 @@ ACCEPTANCE: [one line per item — met / unmet — and one line per held-back ca
 - Do not manufacture objections to justify having been consulted. Sound work gets `ship` or `proceed` and one line.
 - Findings stay under ~400 words. Name each problem precisely — the file, and the fix.
 - **Any `unmet` item or failed held-back case is at minimum `fix-first`, never `ship`.**
+- **Third-party findings in the brief (e.g. from `/codex:adversarial-review`) need evidence before they count.** Try to reproduce each one with a concrete input or command using your read-only Bash. For problems that can't be run, cite the exact code path or the violated spec or acceptance clause. A confirmed finding goes in FINDINGS with its evidence and can drive `fix-first`. Anything else goes on one `UNCONFIRMED:` line and does not block `ship`.
 - `STATUS: insufficient-brief` carries **no** VERDICT line. Say exactly what is missing; the caller supplies it and re-invokes you.
 - Bash is for read-only inspection only — `git diff`, `git log`, running the deliverable's verification command. Never modify the tree, never fix what you find; fix decisions belong to the architect.
