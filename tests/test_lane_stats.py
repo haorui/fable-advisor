@@ -13,6 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "lane_stats.py"
 FIXTURES = Path(__file__).parent / "fixtures" / "lane_stats"
 SENTINEL = "SYNTHETIC_PRIVATE_BODY_SENTINEL_52981"
+PATCH = (f"diff --git a/{SENTINEL}.py b/{SENTINEL}.py\n"
+         f"--- a/{SENTINEL}.py\n+++ b/{SENTINEL}.py\n"
+         "@@ -1,2 +1,3 @@\n-old one\n-old two\n+new one\n+new two\n+new three\n"
+         "diff --git a/second.py b/second.py\n"
+         "--- /dev/null\n+++ b/second.py\n@@ -0,0 +1,2 @@\n+new four\n+new five\n")
 spec = importlib.util.spec_from_file_location("lane_stats", SCRIPT)
 lane_stats = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lane_stats)
@@ -23,6 +28,7 @@ prompt_chars spec_reasoning spec_model spec_budget mode is_async start_ts end_ts
 duration_s notify_count notify_status result_found status verdict report_model lane_name lane_effort files_changed
 insertions deletions sub_model sub_turns sub_input_tokens sub_output_tokens
 sub_cache_read_tokens sub_cache_creation_tokens cc_version era
+size_files size_insertions size_deletions size_new_untracked size_source
 """.split())
 
 
@@ -58,6 +64,11 @@ def write_session(root, lines, project="fake-project", session="synthetic"):
     return path
 
 
+def sub_tool(tool_id, command="", name="Bash"):
+    return {"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": tool_id, "name": name, "input": {"command": command}}]}}
+
+
 class FixtureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -78,6 +89,8 @@ class FixtureTests(unittest.TestCase):
         self.assertEqual(record["model_param"], "sonnet")
         self.assertEqual(record["cc_version"], "2.1.fake")
         self.assertEqual(record["agent_type"], "sol-implementer")
+        self.assertEqual(record["size_source"], "delta")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (1, 15, 4, 2))
 
     def test_async_uses_last_of_two_notifications(self):
         record = self.by_id["toolu_fake_advisor"]
@@ -119,6 +132,9 @@ class FixtureTests(unittest.TestCase):
                 self.assertIsNone(self.by_id[tool_id][key], (tool_id, key))
         self.assertIsNone(self.by_id["toolu_fake_missing"]["agent_id"])
         self.assertFalse(self.by_id["toolu_fake_missing"]["result_found"])
+        missing = self.by_id["toolu_fake_missing"]
+        self.assertEqual(missing["size_source"], "none")
+        self.assertTrue(all(missing[key] is None for key in lane_stats.SIZE_FIELDS))
 
     def test_era_boundaries(self):
         self.assertEqual(self.by_id["toolu_fake_sync"]["era"], "v7")
@@ -160,6 +176,17 @@ class FixtureTests(unittest.TestCase):
             self.assertIn("| missing | 1 |", summary)
             self.assertIn("| opus | 1 |", summary)
             self.assertIn("262.0", summary)
+            for title in ("Size source by agent type (n=2)", "Transcript change sizes (n=1)",
+                          "Lane overhead by size: sol-implementer (n=1)",
+                          "Lane overhead by size: sol-implementer — upper-bound sizes included (n=1)",
+                          "Spec reasoning × line bucket (n=1)", "Report-quoted diffstat (n=1)"):
+                self.assertIn("### " + title, summary)
+            for row in ("| sol-implementer | 1 | 0 | 0 | 0 | 0 |", "| sonnet-implementer | 0 | 0 | 0 | 0 | 1 |",
+                        "| 1-20 | 1 | 0 | 0 | 0 |",
+                        "| new untracked > 0 | 1 | 0 | 0 | 0 |",
+                        "| 1-20 | 1 | 60.0 | 60.0 | 227.0 | 2.0 | complete: 1 |",
+                        "| medium | 0 | 1 | 0 | 0 | 0 |"):
+                self.assertIn(row, summary)
 
     def test_project_filter_and_since(self):
         records, sessions, _ = lane_stats.mine(FIXTURES, re.compile("does-not-match"))
@@ -183,6 +210,524 @@ class EdgeCaseTests(unittest.TestCase):
             root = Path(directory)
             write_session(root, lines)
             return lane_stats.mine(root)
+
+    def mine_subagent(self, lines, agent="sol-implementer"):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reply = result("size", "STATUS: complete")
+            reply["toolUseResult"] = {"agentId": "synthetic-size"}
+            write_session(root, [assistant("size", agent=agent), reply])
+            sub = root / "fake-project" / "synthetic" / "subagents"
+            sub.mkdir(parents=True)
+            with (sub / "agent-synthetic-size.jsonl").open("w", encoding="utf-8") as stream:
+                for line in lines:
+                    stream.write(json.dumps(line) + "\n")
+            return lane_stats.mine(root)[0][0]
+
+    def test_status_baselines_keep_after_totals_and_subtract_observed_untracked(self):
+        for command, output, source, untracked in (
+                ("git status --short", "", "delta-clean", 2),
+                ("git status --porcelain", "?? baseline.txt\n", "delta-clean", 1),
+                ("git status -sb", "## synthetic\n?? baseline.txt\n", "delta-clean", 1),
+                ("git status --short", " M tracked.py\n?? baseline.txt\n", "after-dirty", 1),
+                ("git status --short", "A  tracked.py\n", "after-dirty", 2),
+                ("git status --short", "UU tracked.py\n", "after-dirty", 2),
+                ("git status", "On branch synthetic\nChanges not staged for commit:\n"
+                 "  modified: tracked.py\nno changes added to commit\n", "after-dirty", 2),
+                ("git status", "On branch synthetic\nChanges to be committed:\n"
+                 "  new file: tracked.py\n", "after-dirty", 2),
+                ("git status", "On branch synthetic\nnothing to commit, working tree clean\n", "delta-clean", 2),
+                ("git status", "On branch synthetic\nUntracked files:\n  baseline.txt\n"
+                 "nothing added to commit but untracked files present\n", "delta-clean", 2)):
+            with self.subTest(command=command, output=output):
+                record = self.mine_subagent([
+                    sub_tool("before", command), result("before", output),
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", "git diff --stat; git status --short"),
+                    result("after", "2 files changed, 5 insertions(+), 2 deletions(-)\n"
+                           " M tracked.py\n?? baseline.txt\n?? new.txt\n"),
+                ])
+                self.assertEqual(record["size_source"], source)
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (2, 5, 2, untracked))
+
+    def test_latest_status_determines_clean_baseline(self):
+        for first, last, source in ((" M tracked.py\n", "?? baseline.txt\n", "delta-clean"),
+                                    ("", " M tracked.py\n", "after-dirty")):
+            with self.subTest(source=source):
+                record = self.mine_subagent([
+                    sub_tool("first", "git status --short"),
+                    sub_tool("last", "git status --short"),
+                    result("last", last), result("first", first),
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", "git diff --shortstat"),
+                    result("after", "2 files changed, 5 insertions(+), 2 deletions(-)"),
+                ])
+                self.assertEqual(record["size_source"], source)
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (2, 5, 2))
+
+    def test_preflight_status_filters_ignore_interleaved_foreign_output(self):
+        command = ("command -v codex && codex --version; cd /fictional/repo && "
+                   "git status --short | head -20 && git branch --show-current && git log --oneline -1")
+        for status, source in (("", "delta-clean"), (" M tracked.py\n", "after-dirty")):
+            with self.subTest(source=source):
+                record = self.mine_subagent([
+                    sub_tool("before", command),
+                    result("before", "/fictional/bin/codex\ncodex-cli synthetic\n" + status +
+                           "## synthetic\nsynthetic-branch\n123abcd synthetic subject\n"),
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", "git diff --shortstat"),
+                    result("after", "2 files changed, 5 insertions(+), 2 deletions(-)"),
+                ])
+                self.assertEqual(record["size_source"], source)
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (2, 5, 2))
+
+    def test_status_filter_limits_do_not_claim_complete_counts_or_clean_baseline(self):
+        for filter_command, limit in (("head -2", 2), ("tail -n 2", 2),
+                                      ("head --lines=2", 2), ("tail", 10), ("head", 10)):
+            for tracked in (True, False):
+                with self.subTest(filter_command=filter_command, tracked=tracked):
+                    status = (" M tracked.py\n" if tracked else "?? first.txt\n")
+                    status += "".join(f"?? new-{i}.txt\n" for i in range(limit - 1))
+                    record = self.mine_subagent([
+                        sub_tool("before", "git status --short | " + filter_command), result("before", status),
+                        sub_tool("launch", "codex exec 'synthetic task'"),
+                        sub_tool("after", "git diff --stat; git status --short | " + filter_command),
+                        result("after", "1 file changed, 5 insertions(+)\n" + status),
+                    ])
+                    self.assertEqual(record["size_source"], "after-dirty")
+                    self.assertIsNone(record["size_new_untracked"])
+                    self.assertEqual(record["size_insertions"], 5)
+
+    def test_launch_heredoc_preflight_is_before_even_with_quotes_in_body(self):
+        command = ("git status --short && SPEC=$(mktemp /fictional/spec.XXXXXX)\n"
+                   "cat > \"$SPEC\" << 'SPEC_EOF'\n"
+                   "It's a synthetic task with an unmatched \" quote.\n"
+                   "git diff --shortstat; codex exec 'body text is not a launch'\n"
+                   "SPEC_EOF\nnohup codex exec - < \"$SPEC\" > /fictional/output 2>&1 & echo $!")
+        record = self.mine_subagent([
+            sub_tool("launch", command), result("launch", "?? baseline.txt\n12345\n/fictional/spec\n"),
+            sub_tool("after", "git diff --stat; git status --short"),
+            result("after", "1 file changed, 5 insertions(+)\n?? baseline.txt\n?? new.txt\n"),
+        ])
+        self.assertEqual(record["size_source"], "delta-clean")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (1, 5, 0, 1))
+
+    def test_malformed_segment_does_not_drop_other_measurements(self):
+        record = self.mine_subagent([
+            sub_tool("launch", "git status --short; echo 'unterminated; nohup codex exec task &"),
+            result("launch", "12345\n"),
+            sub_tool("after", "echo 'unterminated; git diff --shortstat; echo done"),
+            result("after", "1 file changed, 5 insertions(+)"),
+        ])
+        self.assertEqual(record["size_source"], "delta-clean")
+        self.assertEqual(record["size_insertions"], 5)
+
+    def test_launch_preflight_diff_subtracts_and_post_launch_segments_are_not_baselines(self):
+        record = self.mine_subagent([
+            sub_tool("launch", "git diff --shortstat; nohup codex exec task & git status --short"),
+            result("launch", "1 file changed, 2 insertions(+)\n12345\n"),
+            sub_tool("after", "git diff --shortstat"),
+            result("after", "2 files changed, 5 insertions(+)"),
+        ])
+        self.assertEqual(record["size_source"], "delta")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (1, 3, 0, None))
+
+    def test_diff_and_status_measurements_merge_independently_in_tool_order(self):
+        record = self.mine_subagent([
+            sub_tool("before-diff", "git diff --shortstat"),
+            result("before-diff", "1 file changed, 3 insertions(+)"),
+            sub_tool("before-status", "git status --short"),
+            result("before-status", " M tracked.py\n?? baseline.txt\n"),
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after-diff", "git diff --shortstat"),
+            sub_tool("after-status", "git status --short"),
+            result("after-status", " M tracked.py\n?? baseline.txt\n?? new.txt\n"),
+            result("after-diff", "2 files changed, 5 insertions(+), 2 deletions(-)"),
+        ])
+        self.assertEqual(record["size_source"], "delta")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (1, 2, 2, 1))
+
+    def test_unobserved_before_untracked_uses_after_count(self):
+        record = self.mine_subagent([
+            sub_tool("before", "git diff --stat"), result("before", "1 file changed, 3 insertions(+)"),
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after", "git diff --stat; git status --short"),
+            result("after", "2 files changed, 5 insertions(+)\n?? new.txt\n"),
+        ])
+        self.assertEqual(record["size_source"], "delta")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (1, 2, 0, 1))
+
+    def test_plain_patch_counts_complete_hunks_and_all_files(self):
+        for command, output in (("git diff", PATCH), ("git diff|cat", PATCH),
+                                ("git diff | tee /fictional/copy | cat", PATCH),
+                                ("git diff", PATCH + "\\ No newline at end of file\n")):
+            with self.subTest(command=command):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", command), result("after", output),
+                ])
+                self.assertEqual(record["size_source"], "after-only")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (2, 5, 2))
+
+    def test_patch_and_stat_totals_survive_adjacent_status_and_scoped_patch_output(self):
+        for command, output in (
+                ("git status --short; git diff", f" M {SENTINEL}.py\n" + PATCH),
+                ("git diff; git status --short", PATCH + f" M {SENTINEL}.py\n"),
+                ("git diff --check; git diff", PATCH),
+                ("git diff --stat; git diff -- a.py", "2 files changed, 5 insertions(+), 2 deletions(-)\n" + PATCH),
+                ("git diff --stat; git diff --check", "2 files changed, 5 insertions(+), 2 deletions(-)\n"),
+                ("git diff --stat 2>/dev/null", "2 files changed, 5 insertions(+), 2 deletions(-)\n")):
+            with self.subTest(command=command):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", command), result("after", output),
+                ])
+                self.assertEqual(record["size_source"], "after-only")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (2, 5, 2))
+
+    def test_non_size_diff_modes_do_not_turn_empty_output_into_zero_totals(self):
+        for flag in ("--check", "--name-only", "--name-status", "--quiet", "--no-patch", "-s"):
+            with self.subTest(flag=flag):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", "git diff " + flag), result("after", ""),
+                ])
+                self.assertEqual(record["size_source"], "none")
+                self.assertTrue(all(record[key] is None for key in lane_stats.SIZE_FIELDS))
+
+    def test_patch_body_summary_text_cannot_replace_adjacent_stat(self):
+        patch = ("diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n"
+                 "@@ -1 +1,2 @@\n 99 files changed, 999 insertions(+)\n+added\n")
+        record = self.mine_subagent([
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after", "git diff --stat; git diff -- a.py"),
+            result("after", "1 file changed, 1 insertion(+)\n" + patch),
+        ])
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (1, 1, 0))
+
+    def test_plain_patch_truncation_markers_and_incomplete_hunks_are_discarded(self):
+        for output in (PATCH + "[... 100 lines omitted]\n", PATCH + "[output truncated]\n",
+                       "Output too large\n" + PATCH, PATCH.rsplit("+new five", 1)[0],
+                       PATCH + "diff --git a/unfinished.py b/unfinished.py\n",
+                       PATCH.replace("@@ -1,2 +1,3 @@", "@@ -1,3 +1,3 @@")):
+            with self.subTest(output=output):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", "git diff"), result("after", output),
+                ])
+                self.assertEqual(record["size_source"], "none")
+                self.assertTrue(all(record[key] is None for key in lane_stats.SIZE_FIELDS))
+
+    def test_scoped_and_filtered_plain_patches_are_ignored(self):
+        for command in ("git diff HEAD~1", "git diff origin/main...HEAD", "git diff -- a.py",
+                        "git diff a.py", "git diff --cached", "git diff --staged",
+                        "git diff|head -20", "git diff | tail -20", "git diff | sed -n '1,20p'",
+                        "git diff | grep '^+'", "git diff | awk '{print}'", "git diff | cat | head -20"):
+            with self.subTest(command=command):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", command), result("after", PATCH),
+                ])
+                self.assertEqual(record["size_source"], "none")
+
+    def test_patch_context_multiple_hunks_and_implicit_single_line_counts(self):
+        output = ("diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n"
+                  "@@ -1,2 +1,3 @@\n context\n-old\n+new\n+added\n"
+                  "@@ -9 +10 @@\n-old\n+new\n")
+        record = self.mine_subagent([
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after", "git diff"), result("after", output),
+        ])
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (1, 3, 2))
+
+    def test_stat_pipes_use_summary_even_without_spaces_around_pipe(self):
+        for command, output, expected in (
+                ("git diff --stat | tail -3", " a.py | 7 +++++--\n2 files changed, 5 insertions(+), 2 deletions(-)\n", (2, 5, 2)),
+                ("git diff --stat|tail -3", "2 files changed, 5 insertions(+), 2 deletions(-)\n", (2, 5, 2)),
+                ("git diff --stat | head -2", " a.py | 5 +++++\n b.py | 2 --\n", None),
+                ("git diff --stat | head -2", " a.py | 7 +++++--\n1 file changed, 5 insertions(+), 2 deletions(-)\n", (1, 5, 2)),
+                ("git diff --stat|head -0", "", None)):
+            with self.subTest(command=command, output=output):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", command), result("after", output),
+                ])
+                self.assertEqual(record["size_source"], "none" if expected is None else "after-only")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), expected or (None, None, None))
+        self.assertEqual(lane_stats.stat_commands("git diff --stat|tail -3"), [("stat", False, True, None)])
+
+    def test_cli_new_size_paths_keep_transcript_text_private(self):
+        cases = (
+            ("clean", "git status --short", f"?? {SENTINEL}.txt\n", "git diff", PATCH, "delta-clean"),
+            ("dirty", "git status", f"On branch synthetic\nChanges not staged for commit:\n  modified: {SENTINEL}\n",
+             "git diff --stat|tail -3", f" {SENTINEL}.py | 7 +++++--\n1 file changed, 5 insertions(+), 2 deletions(-)\n", "after-dirty"),
+            ("patch", None, None, "git diff|cat", PATCH, "after-only"),
+            ("truncated", None, None, "git diff", PATCH + f"[... {SENTINEL} truncated]\n", "none"),
+            ("head", None, None, "git diff --stat|head -2", f" {SENTINEL}.py | 7 +++++--\n", "none"),
+            ("preflight-clean", "command -v codex; git status --short | head -20; git branch --show-current",
+             f"/fictional/{SENTINEL}\ncodex-cli synthetic\nsynthetic-branch\n",
+             "git diff --shortstat", "1 file changed, 5 insertions(+)\n", "delta-clean"),
+            ("preflight-dirty", "git status --short | tail -20; git log --oneline -1",
+             f" M {SENTINEL}.py\n123abcd synthetic subject\n",
+             "git diff --shortstat", "1 file changed, 5 insertions(+)\n", "after-dirty"),
+            ("heredoc", "git status --short; cat << 'SYNTHETIC_EOF'\n"
+             f"It's {SENTINEL} with an unmatched \" quote.\nSYNTHETIC_EOF\nnohup codex exec task &",
+             f"?? {SENTINEL}.txt\n12345\n", "git diff --shortstat",
+             "1 file changed, 5 insertions(+)\n", "delta-clean"),
+            ("malformed", "git status --short; echo 'unterminated; nohup codex exec task &",
+             f"/fictional/{SENTINEL}\n12345\n", "echo 'unterminated; git diff --shortstat",
+             "1 file changed, 5 insertions(+)\n", "delta-clean"),
+            ("mixed", None, None, f"git diff --stat; git diff -- {SENTINEL}.py",
+             "2 files changed, 5 insertions(+), 2 deletions(-)\n" + PATCH, "after-only"),
+            ("status-patch", None, None, "git status --short; git diff",
+             f" M {SENTINEL}.py\n" + PATCH, "after-only"),
+            ("redirect", None, None, "git diff --stat 2>/dev/null",
+             f" {SENTINEL}.py | 5 +++++\n1 file changed, 5 insertions(+)\n", "after-only"),
+            ("status-truncated", None, None, "git status --short | head -2",
+             f" M {SENTINEL}.py\n?? {SENTINEL}.txt\n", "after-only"),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "projects"
+            main = []
+            for tool_id, before_cmd, before_text, after_cmd, after_text, _ in cases:
+                reply = result(tool_id, "STATUS: complete")
+                reply["toolUseResult"] = {"agentId": tool_id}
+                main.extend([assistant(tool_id), reply])
+                sub = root / "fake-project" / "synthetic" / "subagents"
+                sub.mkdir(parents=True, exist_ok=True)
+                lines = [sub_tool("before", before_cmd), result("before", before_text)] if before_cmd else []
+                command = after_cmd.replace("git ", "git -C /fictional/" + SENTINEL + " ", 1)
+                lines.extend([sub_tool("launch", "codex exec '" + SENTINEL + "'"),
+                              sub_tool("after", command),
+                              result("after", after_text)])
+                (sub / ("agent-" + tool_id + ".jsonl")).write_text(
+                    "".join(json.dumps(line) + "\n" for line in lines), encoding="utf-8")
+            write_session(root, main)
+            out = Path(directory) / "out"
+            process = subprocess.run([sys.executable, str(SCRIPT), "--projects-root", str(root), "--out", str(out)],
+                                     capture_output=True, text=True, cwd=ROOT)
+            self.assertEqual(process.returncode, 0, process.stderr)
+            for path in out.iterdir():
+                self.assertNotIn(SENTINEL, path.read_text(encoding="utf-8"))
+            records = [json.loads(line) for line in (out / "invocations.jsonl").read_text().splitlines()]
+            self.assertEqual({r["tool_use_id"]: r["size_source"] for r in records},
+                             {case[0]: case[-1] for case in cases})
+            for record in records:
+                self.assertEqual(set(record), RECORD_KEYS)
+                self.assertTrue(all(record[key] is None or type(record[key]) is int for key in lane_stats.SIZE_FIELDS))
+
+    def test_after_only_shortstat_and_untracked_in_chained_output(self):
+        for agent in ("sol-implementer", "luna-implementer"):
+            with self.subTest(agent=agent):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", "cd '/fictional/fake project' && git diff --shortstat; "
+                             "git -C '/fictional/fake project' status --short"),
+                    result("after", [{"type": "text", "text": "1 file changed, 3 insertions(+)\n"
+                                      " M tracked.py\n?? first.txt\n?? second.txt\n"}]),
+                ], agent=agent)
+                self.assertEqual(record["size_source"], "after-only")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (1, 3, 0, 2))
+
+    def test_scoped_commands_are_ignored(self):
+        for command in ("git diff --stat origin/main...HEAD", "git diff HEAD~1..HEAD --stat",
+                        "git diff --stat -- src/foo.py", "git diff --stat src/foo.py",
+                        "git diff --cached --stat", "git diff --stat --staged",
+                        "git diff --numstat HEAD~1", "git status --short -- src/foo.py",
+                        "git diff --stat > /tmp/out.txt", "git diff >> /tmp/patch.diff",
+                        "git diff --stat 1>/tmp/out.txt"):
+            with self.subTest(command=command):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"), sub_tool("scoped", command),
+                    result("scoped", "1 file changed, 99 insertions(+)\n?? secret.txt"),
+                ])
+                self.assertEqual(record["size_source"], "none")
+                self.assertTrue(all(record[key] is None for key in lane_stats.SIZE_FIELDS))
+
+    def test_stdout_redirect_with_empty_output_is_not_a_zero_size_change(self):
+        # Empty stdout from a redirected diff would otherwise land in the threshold-sensitive 0 bucket.
+        for command in ("git diff > /tmp/patch.diff", "git diff --stat >/tmp/out.txt",
+                        "git diff --stat &>/tmp/x", "git diff --stat 2>&1 >/tmp/x"):
+            with self.subTest(command=command):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"), sub_tool("after", command),
+                    result("after", ""),
+                ])
+                self.assertEqual(record["size_source"], "none")
+
+    def test_stderr_merge_keeps_status_pipe_truncation_visible(self):
+        # `2>&1` is routine; it must not hide the `| head -3` that makes 3 rows a truncated read.
+        record = self.mine_subagent([
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after", "git status --short 2>&1 | head -3"),
+            result("after", "?? a.py\n?? b.py\n?? c.py"),
+        ])
+        self.assertEqual(lane_stats.stat_commands("git status --short 2>&1 | head -3")[0][2:], (True, 3))
+        self.assertIsNone(record["size_new_untracked"])
+        self.assertEqual(lane_stats.stat_commands("git diff --stat 2>&1 && git status --short")[1][0], "status")
+
+    def test_pager_idioms_and_bare_head_are_whole_tree_measurements(self):
+        for command in ("git --no-pager diff --stat", "GIT_PAGER=cat git diff --stat",
+                        "PAGER=cat git -C /fictional/repo --no-pager diff --stat", "git diff HEAD --stat",
+                        "git diff --stat 2>/dev/null"):
+            with self.subTest(command=command):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"), sub_tool("after", command),
+                    result("after", " a.py | 3 ++-\n 1 file changed, 2 insertions(+), 1 deletion(-)"),
+                ])
+                self.assertEqual(record["size_source"], "after-only")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (1, 2, 1))
+
+    def test_numstat_counts_binary_file_without_adding_binary_lines(self):
+        record = self.mine_subagent([
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after", "git -C /fictional/repo diff --numstat"),
+            result("after", "5\t2\ta.py\n-\t-\timg.png\n1\t0\tb.py\n"),
+        ])
+        self.assertEqual(record["size_source"], "after-only")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (3, 6, 2))
+
+    def test_sonnet_splits_at_first_edit_write_or_notebook_edit(self):
+        for name in ("Edit", "Write", "NotebookEdit"):
+            with self.subTest(name=name):
+                record = self.mine_subagent([
+                    sub_tool("before", "git diff --stat"),
+                    result("before", "2 files changed, 10 insertions(+)"),
+                    sub_tool("edit", name=name),
+                    sub_tool("after", "git diff --stat"),
+                    result("after", "3 files changed, 25 insertions(+), 4 deletions(-)"),
+                ], agent="sonnet-implementer")
+                self.assertEqual(record["size_source"], "delta")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (1, 15, 4))
+
+    def test_file_detail_counts_changed_paths_even_when_total_file_count_is_unchanged(self):
+        record = self.mine_subagent([
+            sub_tool("before", "git diff --stat"),
+            result("before", " a.py | 5 +++++\n b.py | 5 +++++\n"
+                   "2 files changed, 10 insertions(+)"),
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after", "git diff --stat"),
+            result("after", " a.py | 5 +++++\n b.py | 9 +++++----\n"
+                   "2 files changed, 10 insertions(+), 4 deletions(-)"),
+        ])
+        self.assertEqual(record["size_source"], "delta")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (1, 0, 4))
+
+    def test_last_measurements_use_tool_order_and_clamp_negative_deltas(self):
+        record = self.mine_subagent([
+            sub_tool("old", "git diff --stat; git status --porcelain"),
+            sub_tool("before", "git diff --stat; git status --porcelain"),
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            result("before", "2 files changed, 10 insertions(+), 8 deletions(-)\n?? a.txt\n?? b.txt"),
+            result("old", "1 file changed, 1 insertion(+)"),
+            sub_tool("after", "git diff --shortstat; git status --porcelain"),
+            result("after", "1 file changed, 3 insertions(+)\n?? a.txt"),
+        ])
+        self.assertEqual(record["size_source"], "delta")
+        self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS), (0, 0, 0, 0))
+
+    def test_chained_diffs_take_last_unscoped_total(self):
+        for command, output in (
+                ("git diff --stat; git diff --shortstat",
+                 " a.py | 2 ++\n1 file changed, 2 insertions(+)\n2 files changed, 7 deletions(-)"),
+                ("git diff --stat; git diff --stat origin/main...HEAD",
+                 "2 files changed, 7 deletions(-)\n9 files changed, 99 insertions(+)"),
+                ("git diff --stat -- a.py && git diff --numstat",
+                 "9 files changed, 99 insertions(+)\n0\t7\ta.py\n-\t-\tb.png")):
+            with self.subTest(command=command):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", command), result("after", output),
+                ])
+                self.assertEqual(record["size_source"], "after-only")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS[:3]), (2, 0, 7))
+
+    def test_no_split_or_no_after_produces_no_size(self):
+        stat = [sub_tool("stat", "git diff --stat"), result("stat", "1 file changed, 3 insertions(+)")]
+        for lines, agent in ((stat, "sol-implementer"),
+                             (stat + [sub_tool("launch", "codex exec 'synthetic task'")], "sol-implementer"),
+                             ([sub_tool("launch", "codex exec 'synthetic task'")] + stat, "sonnet-implementer")):
+            with self.subTest(lines=lines, agent=agent):
+                record = self.mine_subagent(lines, agent=agent)
+                self.assertEqual(record["size_source"], "none")
+                self.assertTrue(all(record[key] is None for key in lane_stats.SIZE_FIELDS))
+
+    def test_ambiguous_chained_numstats_are_not_summed_as_one_diff(self):
+        record = self.mine_subagent([
+            sub_tool("launch", "codex exec 'synthetic task'"),
+            sub_tool("after", "git diff --numstat; git diff --numstat"),
+            result("after", "5\t2\ta.py\n1\t0\tb.py\n"),
+        ])
+        self.assertEqual(record["size_source"], "none")
+        self.assertTrue(all(record[key] is None for key in lane_stats.SIZE_FIELDS))
+
+    def test_known_agent_id_with_missing_subagent_file_has_no_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reply = result("missing-subagent", "STATUS: complete")
+            reply["toolUseResult"] = {"agentId": "synthetic-missing"}
+            write_session(root, [assistant("missing-subagent"), reply])
+            record = lane_stats.mine(root)[0][0]
+        self.assertEqual(record["size_source"], "none")
+        self.assertTrue(all(record[key] is None for key in lane_stats.SIZE_FIELDS))
+
+    def test_clean_diff_status_only_and_failed_tool_results(self):
+        for command, output, expected in (
+                ("git diff --stat", "", (0, 0, 0, None)),
+                ("git status --short", "?? a.txt\n?? b.txt", (None, None, None, 2)),
+                ("git diff --stat", "fatal: synthetic error", None)):
+            with self.subTest(command=command, output=output):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", command), result("after", output),
+                ])
+                self.assertEqual(record["size_source"], "none" if expected is None else "after-only")
+                self.assertEqual(tuple(record[key] for key in lane_stats.SIZE_FIELDS),
+                                 expected or (None, None, None, None))
+        failure = result("after", "1 file changed, 99 insertions(+)")
+        failure["message"]["content"][0]["is_error"] = True
+        record = self.mine_subagent([sub_tool("launch", "codex exec 'synthetic task'"),
+                                     sub_tool("after", "git diff --stat"), failure])
+        self.assertEqual(record["size_source"], "none")
+
+    def test_summary_transcript_buckets_overhead_and_reasoning_counts(self):
+        records = []
+        for size in (0, 1, 20, 21, 100, 101, 500, 501):
+            for source, duration, tokens, turns, status in (
+                    ("delta", 10, 10, 2, "complete"), ("delta-clean", 10, 10, 2, "complete"),
+                    ("after-dirty", 30, 30, 4, "partial"), ("after-only", 30, 30, 4, "partial")):
+                record = self.mine_subagent([
+                    sub_tool("launch", "codex exec 'synthetic task'"),
+                    sub_tool("after", "git diff --shortstat"),
+                    result("after", f"1 file changed, {size} insertions(+)"),
+                ])
+                record.update(size_source=source, duration_s=duration, sub_input_tokens=tokens,
+                              sub_output_tokens=tokens, sub_cache_creation_tokens=tokens,
+                              sub_cache_read_tokens=99999, sub_turns=turns, status=status,
+                              spec_reasoning="high" if source in ("delta", "delta-clean") else "medium")
+                records.append(record)
+        self.assertEqual([lane_stats.line_bucket(r) for r in records[::4]],
+                         ["0", "1-20", "1-20", "21-100", "21-100", "101-500", "101-500", ">500"])
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "summary.md"
+            lane_stats.summary(path, records, [])
+            output = path.read_text()
+        for title in ("Size source by agent type", "Transcript change sizes",
+                      "Lane overhead by size: sol-implementer — upper-bound sizes included"):
+            self.assertIn(f"### {title} (n=32)", output)
+        for title in ("Lane overhead by size: sol-implementer", "Spec reasoning × line bucket"):
+            self.assertIn(f"### {title} (n=16)", output)
+        self.assertIn("| Agent type | delta | delta-clean | after-dirty | after-only | none |", output)
+        self.assertIn("| Insertions + deletions | delta | delta-clean | after-dirty | after-only |", output)
+        self.assertIn("| sol-implementer | 8 | 8 | 8 | 8 | 0 |", output)
+        exact = output.split("### Lane overhead by size: sol-implementer (n=16)")[1].split("###", 1)[0]
+        for label, count in zip(lane_stats.LINE_BUCKETS, (1, 2, 2, 2, 1)):
+            self.assertIn(f"| {label} | {count} | {count} | {count} | {count} |", output)
+            self.assertIn(f"| {label} | {count * 2} | 10.0 | 10.0 | 30.0 | 2.0 | complete: {count * 2} |", exact)
+            self.assertIn(f"| {label} | {count * 4} | 20.0 | 30.0 | 60.0 | 3.0 | "
+                          f"complete: {count * 2}; partial: {count * 2} |", output)
+        self.assertIn("| high | 2 | 4 | 4 | 4 | 2 |", output)
+        self.assertNotIn("| medium |", output.split("### Spec reasoning × line bucket")[1].split("###", 1)[0])
 
     def test_report_values_discard_annotations_and_markdown(self):
         cases = (
