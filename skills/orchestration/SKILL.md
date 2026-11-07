@@ -9,7 +9,7 @@ The session is the architect, running on whatever model the user chose. It owns 
 
 ## Delegate or implement directly
 
-This doctrine began with a Fable architect driving cheaper Codex lanes, where the architect's tokens were the premium to protect and "never type code" followed from that. The typical session is now Opus-led, and architect token volume no longer decides routing. A handoff has real costs. The architect writes a spec, the lane runs, and the architect re-reads the diff and re-runs verification. Each handoff also drops some context the architect had. A lane is worth those costs when it buys at least one of these:
+This doctrine began with a Fable architect driving cheaper Codex lanes, where the architect's tokens were the premium to protect and "never type code" followed from that. The typical session is now Opus-led, and architect token volume no longer decides routing. A handoff has real costs. The architect writes a spec, the lane runs, and the architect reads the diff and checks the report against it. Each handoff also drops some context the architect had. A lane is worth those costs when it buys at least one of these:
 
 - **Vendor diversity**: GPT-6.1 Sol writes and Claude/Fable judges, so a second model family catches what one vendor's models jointly miss.
 - **Parallelism**: independent specs run at the same time.
@@ -35,7 +35,7 @@ Three agents, with the cross-vendor check on the default implementation side:
 |---|---|---|---|
 | `sol-implementer` | GPT-6.1 Sol (`REASONING:` required; `medium` baseline) | Default implementation lane | Drives codex to write all delegated implementation code, including mechanical and routine work. Requires the codex CLI. |
 | `sonnet-implementer` | Claude Sonnet (high effort) | Fallback only when Sol is unavailable | Writes the code itself from the six-part spec. No external dependency. |
-| `fable-advisor` | Fable 5.1 (Claude model `fable`, high effort) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`) and CONSULT (`proceed / revise / rethink`). No CLI or relay; falls back to Claude Opus when Fable is unavailable (see the final-review section). |
+| `fable-advisor` | Fable 5.1 (Claude model `fable`, high effort; LIGHT reviews run at medium) | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`, FULL or LIGHT tier) and CONSULT (`proceed / revise / rethink`). No CLI or relay; falls back to Claude Opus when Fable is unavailable (see the final-review section). |
 
 All delegated implementation goes to `sol-implementer`; what varies with judgment and risk is the `REASONING:` rung, not the lane.
 
@@ -55,7 +55,7 @@ Every lane report ends in one status. Each status maps to one action:
 | `refused`: declined over machine-wide config (the `~/.codex/AGENTS.md` case) | Fix the cause and re-invoke | no |
 | `blocked` | A permission denial: surface it verbatim to the user, and never re-send or reword the prompt | no |
 
-Two rules apply to every row. Before counting any failure, check the working tree yourself. An empty, placeholder, or free-text report is not a status: message the same agent and demand its structured report. Whatever the status, name it and any cost change in your report to the user; never quietly absorb it.
+Before counting any row as a failure, apply the two checks in the two-failures takeover below. Whatever the status, name it and any cost change in your report to the user; never quietly absorb it.
 
 ## Sonnet fallback
 
@@ -176,7 +176,7 @@ The plugin's optional stop-time review gate (`/codex:setup --enable-review-gate`
 
 ## Verification
 
-Reports are claims, not evidence, so the same diff is checked by three parties. The lane re-runs codex's verification, the architect checks the report against the working tree, and the review gate re-runs verification again. The architect's part is a consistency check, not a third re-run. Before accepting any lane's work:
+Reports are claims, not evidence, so the same diff is checked by three parties. The lane runs the verification, the architect checks the report against the working tree, and the review gate re-runs verification again. The architect's part is a consistency check, not a third re-run. Before accepting any lane's work:
 
 - `git diff --stat` plus `git status --short` must match the report's CHANGES (same files, no unreported scope), and the diff must be non-empty.
 - The quoted VERIFIED output must be consistent with that diff: the test names, counts, and files it mentions exist in the change.
