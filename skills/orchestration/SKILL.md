@@ -9,17 +9,15 @@ The session is the architect, running on whatever model the user chose. It owns 
 
 ## Delegate or implement directly
 
-This doctrine began with a Fable architect driving cheaper Codex lanes, where the architect's tokens were the premium to protect and "never type code" followed from that. The typical session is now Opus-led, and architect token volume no longer decides routing. A handoff has real costs. The architect writes a spec, the lane runs, and the architect reads the diff and checks the report against it. Each handoff also drops some context the architect had. A lane is worth those costs when it buys at least one of these:
+This doctrine began with a Fable architect driving cheaper Codex lanes, where the architect's tokens were the premium to protect and "never type code" followed from that. The typical session is now Opus-led, and architect token volume no longer decides routing. A handoff has real costs. The architect writes a spec, the lane runs, and the architect reads the diff and checks the report against it. Each handoff also drops some context the architect had.
 
-- **Vendor diversity**: GPT-6.1 Sol writes and Claude/Fable judges, so a second model family catches what one vendor's models jointly miss.
-- **Parallelism**: independent specs run at the same time.
-- **Context isolation**: a long implementation run, with its exploration and test output, stays out of the architect's context.
+Implementation goes to a GPT-6.1 Sol lane because the user prefers it, not because of an accuracy claim. Cross-vendor writing was originally expected to make the code more accurate. Neither published comparisons nor this plugin's own usage showed that, so vendor diversity is not a routing argument. Given that preference, the question for each change is only whether the handoff is worth its cost.
 
-**Delegate to `sol-implementer`** for multi-file features and new modules, for work where the code will be much larger than the spec that describes it, for independent pieces that can run in parallel, and for security-sensitive or wide-blast-radius changes where a cross-vendor author is worth having.
+**Delegate to `sol-implementer`** for multi-file features and new modules, for work where the code will be much larger than the spec that describes it, and for independent pieces that can run in parallel.
 
 **Implement directly** when the handoff would cost more than the work. That covers a change of a few lines in one or two files; doc, config, or prompt edits where the exact wording is the decision; small follow-up fixes to a lane diff the architect has already read; and a change tied so closely to the architect's current reasoning that a spec would have to restate the code. Announce it in one line (`→ direct · <session model>: <task>`) so routing stays visible. If a direct change grows past that size, stop and write the spec. A substantive defect in a lane's diff is not a small follow-up fix. Send it back as a corrected spec, where it counts under the two-failures takeover.
 
-Either way, the rest of this doctrine holds. Verification evidence comes before acceptance, and the `fable-advisor` gate comes before done. A direct change skips the delegation prompt, not the spec's acceptance list and verification command: write both before the edit, because the review brief carries them. A direct change has no cross-vendor author; say so in the report.
+Either way, the rest of this doctrine holds. Verification evidence comes before acceptance, and the `fable-advisor` gate comes before done. A direct change skips the delegation prompt, not the spec's acceptance list and verification command: write both before the edit, because the review brief carries them.
 
 **Keep the context lean.** Delegate broad exploration, codebase searches, and log-grepping to a read-only agent and keep only its conclusions. Read files yourself only when the decision genuinely depends on the exact code. Don't paste long files, full diffs, or verbose command output into the conversation when a path reference or an excerpt will do.
 
@@ -29,7 +27,7 @@ Whatever the routing, these stay with the architect: decomposition, interface de
 
 ## The lanes
 
-Three agents, with the cross-vendor check on the default implementation side:
+Three agents:
 
 | Agent | Producer | Role | Notes |
 |---|---|---|---|
@@ -65,7 +63,7 @@ Once triggered, route the rest of the session's implementation directly to `sonn
 
 No other status triggers the fallback; see Lane statuses.
 
-Label the Agent `description` as `Claude Sonnet (Sol fallback) · high: <task>` and announce `→ sonnet-implementer · Claude Sonnet · high (Sol fallback)`. Tell the user the deliverable lost its cross-vendor check: Claude wrote it and a Claude model reviewed it. `/codex:adversarial-review` cannot substitute when codex itself is what is unavailable.
+Label the Agent `description` as `Claude Sonnet (Sol fallback) · high: <task>` and announce `→ sonnet-implementer · Claude Sonnet · high (Sol fallback)`. Tell the user the session switched to the Sonnet fallback. The Codex plugin's review commands use the same `codex` binary, so they are down too.
 
 ## Showing which model runs each step
 
@@ -95,7 +93,7 @@ fable-advisor lane profile: off
 The architect owns its decisions, but owning a decision and making it unexamined are different things. At a commitment boundary, do both of the following:
 
 1. **Make the boundary explicit**: state the decision, the options considered, and the deciding risk in one short block before committing.
-2. **Consult the outside voice**: send that decision memo to `fable-advisor` in CONSULT mode. It returns proceed / revise / rethink with fresh eyes, judged against the memo rather than the conversation. The non-Anthropic perspective still sits at the implementation lane — GPT writes, Claude/Fable judges.
+2. **Consult the outside voice**: send that decision memo to `fable-advisor` in CONSULT mode. It returns proceed / revise / rethink with fresh eyes, judged against the memo rather than the conversation.
 
 Consult at these moments:
 
@@ -168,7 +166,7 @@ What the review buys depends on the session model. When the architect is not a F
 
 If the official OpenAI Codex plugin for Claude Code is installed (`codex@openai-codex` under `enabledPlugins` in the user's Claude Code settings; `/plugin list` shows it), its commands become available in the session. It talks to the local `codex` binary over its app-server protocol, so it shares the same install and login as the lanes. The doctrine uses it three ways:
 
-- **`/codex:adversarial-review`** — run it on the accumulated diff *before* the `fable-advisor` final review gate on any deliverable that touched a security-sensitive path, a migration, or an API shape. Pass its findings to `fable-advisor` in the review brief, labelled as unverified third-party claims that the advisor re-checks itself — they are input to its own read of the diff, not a substitute for it. A third-party finding becomes `fix-first` only with evidence. Runnable evidence is a concrete input, command, or call sequence that shows the wrong behavior. For problems that cannot be safely or practically run (a security hole, a spec violation, a resource leak), the evidence is the exact code path or the violated spec or acceptance clause. Findings without either are listed as unconfirmed and do not block `ship`. LLM review produces many false positives, and a reviewer that "fixes" code it never ran can break correct code. When a confirmed finding is fixed, the reproduction becomes a failing test first, written before the fix. `/codex:review` is the lighter pass for ordinary deliverables when the user wants cross-vendor review. Since this fork's reviewer (`fable-advisor`) is a Claude model, the Codex plugin's adversarial review is the only non-Anthropic check available on the review side of the pipeline — which is why it is recommended, not required, specifically on those deliverables.
+- **`/codex:adversarial-review`** — run it on the accumulated diff *before* the `fable-advisor` final review gate on any deliverable that touched a security-sensitive path, a migration, or an API shape. Pass its findings to `fable-advisor` in the review brief, labelled as unverified third-party claims that the advisor re-checks itself — they are input to its own read of the diff, not a substitute for it. A third-party finding becomes `fix-first` only with evidence. Runnable evidence is a concrete input, command, or call sequence that shows the wrong behavior. For problems that cannot be safely or practically run (a security hole, a spec violation, a resource leak), the evidence is the exact code path or the violated spec or acceptance clause. Findings without either are listed as unconfirmed and do not block `ship`. LLM review produces many false positives, and a reviewer that "fixes" code it never ran can break correct code. When a confirmed finding is fixed, the reproduction becomes a failing test first, written before the fix. `/codex:review` is the lighter pass for ordinary deliverables when the user asks for it. Neither is required. Each adds a second reviewer on the deliverables most worth it, and its findings count only with evidence.
 - **`/codex:rescue --model <slug> --effort <rung>`** — a write-capable delegation the user can drive directly, with `/codex:status`, `/codex:result`, and `/codex:cancel` for background jobs. Use it when the user asks for it, or for a long-running investigation you want off the session's critical path. Its output is not a lane report, so the architect still reads the diff and re-runs verification itself. Whenever you want the structured report and the empty-diff check, use `sol-implementer` (or `sonnet-implementer` under the fallback).
 - **`/codex:setup`** — point the user here when a lane reports `unavailable`; it diagnoses the codex binary, version, and login.
 
