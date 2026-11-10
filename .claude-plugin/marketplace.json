@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
   "metadata": {
-    "description": "The session can run on any model: GPT-6.1 Sol (via Codex) handles delegated implementation at a per-task reasoning effort while the architect makes small, local changes directly, Claude Sonnet takes over when Sol is unavailable, and every deliverable is reviewed in a clean context: by Claude Opus for routine lane work, and by Fable 5.1 for consults, the architect's own changes, and high-risk work."
+    "description": "The session can run on any model: GPT-6.1 Sol (via Codex) handles delegated implementation at a per-task reasoning effort while the architect makes small, local changes directly, Claude Sonnet takes over when Sol is unavailable, and every deliverable is reviewed in a clean context: by Claude Opus for routine lane work, and by Fable for consults, the architect's own changes, and high-risk work."
   },
   "owner": {
     "name": "haorui",
@@ -11,7 +11,7 @@
     {
       "name": "fable-advisor",
       "source": "./",
-      "description": "The session can run on any model: GPT-6.1 Sol (via Codex) handles delegated implementation at a per-task reasoning effort while the architect makes small, local changes directly, Claude Sonnet takes over when Sol is unavailable, and every deliverable is reviewed in a clean context: by Claude Opus for routine lane work, and by Fable 5.1 for consults, the architect's own changes, and high-risk work."
+      "description": "The session can run on any model: GPT-6.1 Sol (via Codex) handles delegated implementation at a per-task reasoning effort while the architect makes small, local changes directly, Claude Sonnet takes over when Sol is unavailable, and every deliverable is reviewed in a clean context: by Claude Opus for routine lane work, and by Fable for consults, the architect's own changes, and high-risk work."
     }
   ]
 }

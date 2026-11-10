@@ -33,7 +33,7 @@ Three agents:
 |---|---|---|---|
 | `sol-implementer` | GPT-6.1 Sol (`REASONING:` required; `medium` baseline) | Default implementation lane | Drives codex to write all delegated implementation code, including mechanical and routine work. Requires the codex CLI. |
 | `sonnet-implementer` | Claude Sonnet (high effort) | Fallback only when Sol is unavailable | Writes the code itself from the six-part spec. No external dependency. |
-| `fable-advisor` | Claude Opus by default; Fable 5.1 (Agent `model: "fable"`) for consults, architect-written changes, and high-risk work. High effort; LIGHT reviews run at medium | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`, FULL or LIGHT tier) and CONSULT (`proceed / revise / rethink`). No CLI or relay; model routing and fallback are in the final-review section. |
+| `fable-advisor` | Claude Opus by default; Fable (Agent `model: "fable"`) for consults, architect-written changes, and high-risk work. High effort; LIGHT reviews run at medium | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`, FULL or LIGHT tier) and CONSULT (`proceed / revise / rethink`). No CLI or relay; model routing and fallback are in the final-review section. |
 
 All delegated implementation goes to `sol-implementer`; what varies with judgment and risk is the `REASONING:` rung, not the lane.
 
@@ -69,7 +69,7 @@ Label the Agent `description` as `Claude Sonnet (Sol fallback) · high: <task>` 
 
 Claude Code's UI shows each subagent call by its agent name and the `description` passed to it. The `sol-implementer` wrapper runs on Sonnet while GPT-6.1 Sol writes the code; `sonnet-implementer` runs on Sonnet and writes the code itself. Label each Agent `description` with the model and effort in the form `<Model> · <effort>: <task>` — for example `GPT-6.1 Sol · medium: add pagination to /orders`, `Opus 5.5 · full: final review`, or `Claude Sonnet (Sol fallback) · high: update the checkout flow`.
 
-Announce each routing decision in one line before delegating: `→ sol-implementer · GPT-6.1 Sol · medium`, `→ fable-advisor · Opus 5.5 · full` or `→ fable-advisor · Fable 5.1 · full` (or `· light`, or `· consult`), or `→ sonnet-implementer · Claude Sonnet · high (Sol fallback)`. Keep the lane's `LANE:` line when summarizing its report; it identifies the model and effort that actually ran.
+Announce each routing decision in one line before delegating: `→ sol-implementer · GPT-6.1 Sol · medium`, `→ fable-advisor · Opus 5.5 · full` or `→ fable-advisor · Fable · full` (or `· light`, or `· consult`), or `→ sonnet-implementer · Claude Sonnet · high (Sol fallback)`. Keep the lane's `LANE:` line when summarizing its report; it identifies the model and effort that actually ran.
 
 The lane agents carry UI colours: Sol orange, `fable-advisor` purple, and `sonnet-implementer` green. Sol's effort is always named explicitly by the architect in the required `REASONING:` line.
 
@@ -154,9 +154,9 @@ The gate has two tiers, chosen by **who wrote the change**, not by how big it is
 - **FULL** — every deliverable containing a lane diff, and any direct change that touches a security-sensitive path, a migration, or an API shape. The brief carries the spec's acceptance list verbatim, plus held-back cases — one to three concrete inputs with expected outputs, chosen by the architect and never shown to the implementer — that the reviewer runs before reading the diff. An implementer that has seen the exact checks can satisfy the checks without satisfying the behavior; cases it never saw measure the behavior. When the deliverable has no black-box surface (a pure internal refactor, say), the architect says so in the brief instead of inventing cases.
 - **LIGHT** — only a deliverable made entirely of small, local direct changes by the architect. The brief starts with `TIER: light` and carries the goal, the acceptance list, the verification command, and where to find the diff, plus the routing lines `AUTHOR: direct`, whether this is a re-review, and `REVIEWER: fable — direct change`; no held-back cases, since cases the architect withholds from itself measure nothing. Invoke it with the Agent `model: "fable"` and `effort: "medium"` parameters. The reviewer still re-runs the verification command and reads the diff.
 
-The reviewer may decline a LIGHT brief whose diff is not small and local — multi-file, risky, or containing lane work — by returning `insufficient-brief` and asking for a FULL brief; supply it and re-invoke. Announce the tier and the reviewer model, for example `→ fable-advisor · Opus 5.5 · full` or `→ fable-advisor · Fable 5.1 · light`, and label the Agent `description` the same way.
+The reviewer may decline a LIGHT brief whose diff is not small and local — multi-file, risky, or containing lane work — by returning `insufficient-brief` and asking for a FULL brief; supply it and re-invoke. Announce the tier and the reviewer model, for example `→ fable-advisor · Opus 5.5 · full` or `→ fable-advisor · Fable · light`, and label the Agent `description` the same way.
 
-**Which model reviews.** The tier sets how deep the review goes; the reviewer model is chosen by risk. `fable-advisor` runs on Claude Opus by default. The architect passes the Agent `model: "fable"` parameter to put Fable 5.1, Claude's most capable model, on:
+**Which model reviews.** The tier sets how deep the review goes; the reviewer model is chosen by risk. `fable-advisor` runs on Claude Opus by default. The architect passes the Agent `model: "fable"` parameter to put Fable, Claude's most capable model, on:
 
 - every CONSULT;
 - everything the architect wrote itself: direct changes (so every LIGHT review) and two-failures takeovers. The architect usually runs on Opus, and Opus reviewing Opus's own work brings fresh eyes but not a second model;
