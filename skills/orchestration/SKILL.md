@@ -33,7 +33,7 @@ Three agents:
 |---|---|---|---|
 | `sol-implementer` | GPT-6.1 Sol (`REASONING:` required; `medium` baseline) | Default implementation lane | Drives codex to write all delegated implementation code, including mechanical and routine work. Requires the codex CLI. |
 | `sonnet-implementer` | Claude Sonnet (high effort) | Fallback only when Sol is unavailable | Writes the code itself from the six-part spec. No external dependency. |
-| `fable-advisor` | Claude Opus by default; Fable (Agent `model: "fable"`) for consults, architect-written changes, and high-risk work. High effort; LIGHT reviews run at medium | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`, FULL or LIGHT tier) and CONSULT (`proceed / revise / rethink`). No CLI or relay; model routing and fallback are in the final-review section. |
+| `fable-advisor` | Claude Opus by default; Fable (Agent `model: "fable"`) for consults, the architect's FULL-tier changes, and high-risk work. High effort; LIGHT reviews run at medium | Reviewer + outside voice | Two modes: REVIEW (`ship / fix-first / rethink`, FULL or LIGHT tier) and CONSULT (`proceed / revise / rethink`). No CLI or relay; model routing and fallback are in the final-review section. |
 
 All delegated implementation goes to `sol-implementer`; what varies with judgment and risk is the `REASONING:` rung, not the lane.
 
@@ -69,7 +69,7 @@ Label the Agent `description` as `Claude Sonnet (Sol fallback) · high: <task>` 
 
 Claude Code's UI shows each subagent call by its agent name and the `description` passed to it. The `sol-implementer` wrapper runs on Sonnet while GPT-6.1 Sol writes the code; `sonnet-implementer` runs on Sonnet and writes the code itself. Label each Agent `description` with the model and effort in the form `<Model> · <effort>: <task>` — for example `GPT-6.1 Sol · medium: add pagination to /orders`, `Opus 5.5 · full: final review`, or `Claude Sonnet (Sol fallback) · high: update the checkout flow`.
 
-Announce each routing decision in one line before delegating: `→ sol-implementer · GPT-6.1 Sol · medium`, `→ fable-advisor · Opus 5.5 · full` or `→ fable-advisor · Fable · full` (or `· light`, or `· consult`), or `→ sonnet-implementer · Claude Sonnet · high (Sol fallback)`. Keep the lane's `LANE:` line when summarizing its report; it identifies the model and effort that actually ran.
+Announce each routing decision in one line before delegating: `→ sol-implementer · GPT-6.1 Sol · medium`, `→ fable-advisor · Opus 5.5 · full`, `→ fable-advisor · Opus 5.5 · light`, `→ fable-advisor · Fable · full`, `→ fable-advisor · Fable · consult`, or `→ sonnet-implementer · Claude Sonnet · high (Sol fallback)`. Keep the lane's `LANE:` line when summarizing its report; it identifies the model and effort that actually ran.
 
 The lane agents carry UI colours: Sol orange, `fable-advisor` purple, and `sonnet-implementer` green. Sol's effort is always named explicitly by the architect in the required `REASONING:` line.
 
@@ -152,25 +152,26 @@ Independent specs (no shared files, no ordering dependency) launch as parallel a
 The gate has two tiers, chosen by **who wrote the change**, not by how big it is. Small delegated changes are no more reliable than large ones, so a lane diff never gets the light tier.
 
 - **FULL** — every deliverable containing a lane diff, and any direct change that touches a security-sensitive path, a migration, or an API shape. The brief carries the spec's acceptance list verbatim, plus held-back cases — one to three concrete inputs with expected outputs, chosen by the architect and never shown to the implementer — that the reviewer runs before reading the diff. An implementer that has seen the exact checks can satisfy the checks without satisfying the behavior; cases it never saw measure the behavior. When the deliverable has no black-box surface (a pure internal refactor, say), the architect says so in the brief instead of inventing cases.
-- **LIGHT** — only a deliverable made entirely of small, local direct changes by the architect. The brief starts with `TIER: light` and carries the goal, the acceptance list, the verification command, and where to find the diff, plus the routing lines `AUTHOR: direct`, whether this is a re-review, and `REVIEWER: fable — direct change`; no held-back cases, since cases the architect withholds from itself measure nothing. Invoke it with the Agent `model: "fable"` and `effort: "medium"` parameters. The reviewer still re-runs the verification command and reads the diff.
+- **LIGHT** — only a deliverable made entirely of small, local direct changes by the architect. The brief starts with `TIER: light` and carries the goal, the acceptance list, the verification command, and where to find the diff, plus the routing lines `AUTHOR: direct`, whether this is a re-review, and `REVIEWER: opus — light direct change`; no held-back cases, since cases the architect withholds from itself measure nothing. Invoke it with the Agent `effort: "medium"` parameter; it runs on Opus unless another Fable category below applies, such as a re-review after an earlier re-review already returned `fix-first`. The reviewer still re-runs the verification command and reads the diff.
 
-The reviewer may decline a LIGHT brief whose diff is not small and local — multi-file, risky, or containing lane work — by returning `insufficient-brief` and asking for a FULL brief; supply it and re-invoke. Announce the tier and the reviewer model, for example `→ fable-advisor · Opus 5.5 · full` or `→ fable-advisor · Fable · light`, and label the Agent `description` the same way.
+The reviewer may decline a LIGHT brief whose diff is not small and local — multi-file, risky, or containing lane work — by returning `insufficient-brief` and asking for a FULL brief; supply it and re-invoke. Announce the tier and the reviewer model, for example `→ fable-advisor · Opus 5.5 · light` or `→ fable-advisor · Fable · full`, and label the Agent `description` the same way.
 
 **Which model reviews.** The tier sets how deep the review goes; the reviewer model is chosen by risk. `fable-advisor` runs on Claude Opus by default. The architect passes the Agent `model: "fable"` parameter to put Fable, Claude's most capable model, on:
 
 - every CONSULT;
-- everything the architect wrote itself: direct changes (so every LIGHT review) and two-failures takeovers. The architect usually runs on Opus, and Opus reviewing Opus's own work brings fresh eyes but not a second model;
-- any deliverable that touches a security-sensitive path, a migration or other irreversible operation, a public API or cross-module contract, or concurrency, transactions, or distributed state;
+- architect-written work that needs a FULL review: two-failures takeovers and risky direct changes. The architect usually runs on Opus, and Opus reviewing Opus's own work brings fresh eyes but not a second model. LIGHT reviews of small, local direct changes stay on Opus and accept that trade;
+- hard security work, where the security reasoning itself is the difficult part: designing or changing authentication, authorization, cryptography, or secret-handling logic, or a subtle change whose failure would open a hole. A change that merely touches a security-sensitive path is not enough. If it follows an established, already-reviewed pattern or is mechanically simple, it is routine;
+- any deliverable that includes a migration or other irreversible operation, a public API or cross-module contract, or concurrency, transactions, or distributed state;
 - work the user calls high-value or complex, or that the architect judges subtle enough to need the strongest reader;
 - a re-review after an earlier re-review already returned `fix-first`.
 
-Opus reviews the rest, which is routine lane work. The lane wrote that code (GPT-6.1 Sol, or Sonnet under the fallback), so an Opus reviewer is already a different model from the author.
+Opus reviews the rest: routine lane work, including routine changes on security-sensitive paths, and LIGHT reviews. The lane wrote that code (GPT-6.1 Sol, or Sonnet under the fallback), so an Opus reviewer is already a different model from the author.
 
 Every REVIEW brief records the routing so the reviewer can check it:
 
 - `AUTHOR: lane | direct | takeover`;
 - whether this is a re-review;
-- `REVIEWER: fable — <reason>` or `REVIEWER: opus — routine lane diff`.
+- `REVIEWER: fable — <reason>`, or `REVIEWER: opus — routine lane diff` / `opus — light direct change`.
 
 The reviewer checks this before anything else. An Opus reviewer whose brief says `opus` but whose change set falls in a Fable category returns `insufficient-brief`; the architect corrects the line and re-invokes with `model: "fable"`.
 
@@ -185,7 +186,7 @@ The reviewer checks this before anything else. An Opus reviewer whose brief says
 
 A `ship` verdict is itself a claim, not evidence. Before reporting done on a ship, confirm the reviewer judged the actual change set — its findings, or the files it cites, must be consistent with the real diff. A ship rendered against an empty or wrong change set is void: fix the brief (usually the instructions for locating the changes) and re-invoke.
 
-What the review buys depends on who wrote the change and who reads it. In every case the reviewer reads in a clean context. When the reviewer is a different model from the author, it is also an independent-model check. That covers lane work under either reviewer, and architect-written work reviewed by Fable when the architect is not Fable. When the reviewer is the same model as the author, the review is a fresh-eyes check, not an independent-model check. That happens when the architect is a Fable model, or when Opus stands in for an unavailable Fable on an Opus architect's work. Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings are routed like any other change: substantive defects go back to the lane that produced the change as corrected specs; small ones the architect fixes directly and announces.
+What the review buys depends on who wrote the change and who reads it. In every case the reviewer reads in a clean context. When the reviewer is a different model from the author, it is also an independent-model check. That covers lane work under either reviewer, and architect-written work reviewed by Fable when the architect is not Fable. When the reviewer is the same model as the author, the review is a fresh-eyes check, not an independent-model check. That happens on LIGHT reviews when the architect runs on Opus, on Fable-routed reviews of a Fable architect's own work, and when Opus stands in for an unavailable Fable on an Opus architect's work. Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings are routed like any other change: substantive defects go back to the lane that produced the change as corrected specs; small ones the architect fixes directly and announces.
 
 ## The Codex plugin (optional)
 
