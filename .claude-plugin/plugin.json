@@ -1,6 +1,6 @@
 {
   "name": "fable-advisor",
-  "version": "9.0.0",
+  "version": "9.1.0",
   "description": "The session can run on any model: Claude Sonnet handles delegated implementation while the architect makes small, local changes directly, GPT-6.2 Astra (via Codex) is the outside voice at commitment boundaries with Fable as its fallback, and every deliverable is reviewed in a clean context: by Claude Opus for routine work, and by Fable for takeovers and hard or high-risk work.",
   "author": {
     "name": "haorui",

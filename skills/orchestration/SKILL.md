@@ -102,7 +102,7 @@ Consult at these moments:
 - Whenever the same problem has resisted two distinct attempts — including after a two-failures takeover that is itself struggling
 - Any time the architect notices it is about to bet an hour of lane work on an assumption it hasn't tested
 
-Act on the verdict or surface the disagreement — never silently ignore it. A consult costs cents and runs read-only; skipping it to save a minute is the wrong economy. Astra's verdict comes through a relay, so treat a finding that cites a file as a claim to check against that file before it changes the plan.
+Act on the verdict or surface the disagreement — never silently ignore it. A consult costs cents and runs read-only; skipping it to save a minute is the wrong economy. Astra's verdict comes through a relay, so treat a finding that cites a file as a claim to check against that file before it changes the plan. A `THEORETICAL:` risk does not change the plan on its own (see Finding likelihood below).
 
 ## The spec contract
 
@@ -172,6 +172,10 @@ The reviewer checks this before anything else. An Opus reviewer whose brief says
 A `ship` verdict is itself a claim, not evidence. Before reporting done on a ship, confirm the reviewer judged the actual change set — its findings, or the files it cites, must be consistent with the real diff. A ship rendered against an empty or wrong change set is void: fix the brief (usually the instructions for locating the changes) and re-invoke.
 
 What the review buys depends on who wrote the change and who reads it. In every case the reviewer reads in a clean context. When the reviewer is a different model from the author, it is also an independent-model check. That covers lane work under either reviewer, and architect-written work reviewed by Fable when the architect is not Fable. All of these are Claude models; the second vendor in this arrangement is the outside voice, not the gate. When the reviewer is the same model as the author, the review is a fresh-eyes check, not an independent-model check. That happens on Opus reviews of an Opus architect's routine direct changes, on Fable-routed reviews of a Fable architect's own work, and when Opus stands in for an unavailable Fable on an Opus architect's work. Act on the verdict or surface the disagreement — never silently ignore it. `fix-first` findings are routed like any other change: substantive defects go back to the lane as corrected specs; small ones the architect fixes directly and announces.
+
+### Finding likelihood
+
+LLM reviewers and advisors, whatever the vendor, are prone to over-reporting rare edge cases, and the fix they tend to recommend is defensive code: fallbacks, guards, and catches that hide failures and grow the code. So every finding carries a trigger. `fable-advisor` and `astra-advisor` put realistic findings, whose trigger occurs in actual use, in `FINDINGS`, and theoretical ones on a `THEORETICAL:` line. Only realistic findings drive `fix-first`, `revise`, `rethink`, or a corrected spec. This applies to third-party findings too: evidence decides whether one counts, its trigger decides whether it can block. Theoretical ones do not go back to the lane; mention them to the user only when they bear on a decision still open. Never accept a theoretical tag for input an attacker can control, data loss or an irreversible operation, and concurrency or race conditions, where a rare trigger is still a real one. If a reviewer tagged one of these theoretical, treat it as realistic. The implementer's matching rule is no unrequested defensive code.
 
 ## The Codex plugin (optional)
 

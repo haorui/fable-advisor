@@ -66,9 +66,13 @@ Return exactly this shape:
 VERDICT: proceed | revise | rethink
 OPTION: [which option you back, or the unconsidered alternative that matters]
 DECIDING RISK: [the single risk that decides it, one or two sentences]
-FINDINGS: [file or memo clause + the problem, one per line; under ~300 words]
+FINDINGS: [file or memo clause + the problem + the trigger that occurs in actual use, one per line; under ~300 words]
+THEORETICAL: [risks whose trigger actual use does not produce, one clause each with the trigger, or none]
 
-Sound decisions get proceed and one line. Do not manufacture objections.
+Only FINDINGS can drive revise or rethink; THEORETICAL risks alone cannot. Never
+put these under THEORETICAL: input an attacker can control, data loss or an irreversible operation, and concurrency or race conditions, where a rare trigger is still a real one.
+Sound decisions get proceed and one line. Do not manufacture objections, and do
+not recommend defensive code for a theoretical trigger.
 
 [the full decision memo, restated cleanly]
 MEMO_EOF
@@ -121,6 +125,7 @@ VERDICT: proceed | revise | rethink   — only when STATUS: complete, copied fro
 OPTION: [copied from Astra]
 DECIDING RISK: [copied from Astra]
 FINDINGS: [copied from Astra; trim only for length, never reword a finding's claim]
+THEORETICAL: [copied from Astra — omit the line if none]
 GAPS: [memo gaps Astra flagged, tree changes observed, or "none"]
 ```
 
